@@ -11,12 +11,12 @@ so they land in the same dataset as the RSS + API pipelines.
 
 import dlt
 
-from sources.scrapers.mm.mizzima_burmese import mizzima_burmese
+from sources.scrapers.mm.news_eleven import news_eleven
 
 
 @dlt.source(name="scrapers")
 def scrapers_source():
-    yield mizzima_burmese()
+    yield news_eleven()
 
 
 def run() -> None:

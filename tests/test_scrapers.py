@@ -3,6 +3,7 @@
 Layout matches tests/README.md (one file per source module).
 """
 
+from pathlib import Path
 from typing import Any
 
 import requests
@@ -85,3 +86,17 @@ def test_run_merges_article_fields(monkeypatch):
         assert row["source"] == "fake"
         assert row["country_target"] == "XX"
         assert "extracted_at" in row
+
+
+from sources.scrapers.mm.news_eleven import NewsElevenScraper
+
+FIXTURES = Path(__file__).parent / "fixtures"
+
+
+def test_news_eleven_parse_article_extracts_summary():
+    html = (FIXTURES / "news_eleven_article.html").read_text(encoding="utf-8")
+    soup = BeautifulSoup(html, "html.parser")
+    fields = NewsElevenScraper().parse_article(soup)
+    summary = fields.get("summary")
+    assert summary is not None
+    assert len(summary.strip()) > 20

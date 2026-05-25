@@ -175,18 +175,18 @@ countries:
       notes: ""
     - name: Zeit Kultur
       url: https://www.zeit.de/kultur
-      rss: https://newsfeed.zeit.de/kultur/index
+      rss: https://newsfeed.zeit.de/feuilleton/index
       language: de
       scrape: rss
       robots_ok: unknown
-      notes: ""
+      notes: "Zeit retired /kultur/index; /feuilleton/index is the live culture feed."
     - name: Zeit Wissen
       url: https://www.zeit.de/wissen
-      rss: https://newsfeed.zeit.de/wissen/index
+      rss: https://newsfeed.zeit.de/wissenschaft/index
       language: de
       scrape: rss
       robots_ok: unknown
-      notes: ""
+      notes: "Zeit retired /wissen/index; /wissenschaft/index is the live science feed."
     - name: Zeit Sport
       url: https://www.zeit.de/sport
       rss: https://newsfeed.zeit.de/sport/index
@@ -1041,7 +1041,14 @@ countries:
       language: my
       scrape: beautifulsoup
       robots_ok: unknown
-      notes: "No RSS on Burmese edition. Scraped via mizzima_burmese.py."
+      notes: "No RSS on Burmese edition. Cloudflare-blocks plain HTTP fetches as of 2026-05-25. mizzima_burmese.py stays in tree, currently unwired."
+    - name: Eleven Media Burmese
+      url: https://news-eleven.com/
+      rss: ""
+      language: my
+      scrape: beautifulsoup
+      robots_ok: unknown
+      notes: "No RSS. Scraped via news_eleven.py."
 
   KZ:
     - name: Astana Times
