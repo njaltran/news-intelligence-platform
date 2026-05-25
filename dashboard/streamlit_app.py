@@ -17,6 +17,7 @@ import os
 import clickhouse_connect
 import pandas as pd
 import streamlit as st
+from streamlit_autorefresh import st_autorefresh
 
 CH_HOST = os.getenv("CLICKHOUSE_HOST", "localhost")
 CH_PORT = int(os.getenv("CLICKHOUSE_HTTP_PORT", "8123"))
@@ -46,12 +47,21 @@ def _query(sql: str) -> pd.DataFrame:
 st.title("News Intelligence — live ingest")
 st.caption(f"ClickHouse at {CH_USER}@{CH_HOST}:{CH_PORT}/{CH_DB}.{TABLE}")
 
-refresh = st.sidebar.button("Refresh")
-if refresh:
-    st.cache_data.clear()
+interval_s = st.sidebar.slider("auto-refresh seconds", 0, 60, 5, step=1)
+if interval_s > 0:
+    st_autorefresh(interval=interval_s * 1000, key="dashboard_autorefresh")
+    st.sidebar.caption(f"refreshing every {interval_s}s")
+else:
+    st.sidebar.caption("auto-refresh paused")
+
+# Always re-pull on rerun. The 30s @st.cache_data was too sticky for a
+# live-ingest view, so the cache is cleared each tick.
+st.cache_data.clear()
+if st.sidebar.button("Refresh now"):
+    st.rerun()
 
 
-@st.cache_data(ttl=30)
+@st.cache_data(ttl=2)
 def fetch_totals() -> dict:
     df = _query(
         f"SELECT count() AS rows, uniqExact(url) AS unique_urls FROM {TABLE}"
@@ -59,7 +69,7 @@ def fetch_totals() -> dict:
     return df.iloc[0].to_dict()
 
 
-@st.cache_data(ttl=30)
+@st.cache_data(ttl=2)
 def fetch_by_country() -> pd.DataFrame:
     return _query(
         f"""
@@ -71,7 +81,7 @@ def fetch_by_country() -> pd.DataFrame:
     )
 
 
-@st.cache_data(ttl=30)
+@st.cache_data(ttl=2)
 def fetch_top_sources(limit: int = 30) -> pd.DataFrame:
     return _query(
         f"""
@@ -84,7 +94,7 @@ def fetch_top_sources(limit: int = 30) -> pd.DataFrame:
     )
 
 
-@st.cache_data(ttl=30)
+@st.cache_data(ttl=2)
 def fetch_recent(limit: int = 50) -> pd.DataFrame:
     return _query(
         f"""
@@ -96,7 +106,7 @@ def fetch_recent(limit: int = 50) -> pd.DataFrame:
     )
 
 
-@st.cache_data(ttl=30)
+@st.cache_data(ttl=2)
 def fetch_by_day() -> pd.DataFrame:
     return _query(
         f"""
