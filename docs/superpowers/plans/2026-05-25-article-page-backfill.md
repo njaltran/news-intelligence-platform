@@ -322,59 +322,78 @@ git commit -m "Wire fetch_article into Scraper.run with homepage-wins precedence
 
 ---
 
-## Task 5: Capture a Mizzima article fixture
+## Task 5 (revised): Capture a News Eleven article fixture
+
+**Why revised:** Mizzima Burmese now sits behind Cloudflare (HTTP 403 + `cf-mitigated: challenge`). The PoC's original target is unrunnable from curl / `requests`. We swap to **News Eleven** (`https://news-eleven.com/`), a Burmese-language outlet with real HTML, no Cloudflare gate, no RSS feed, and a `/article/<int>` URL pattern. The Mizzima file stays in tree (unwired) for future revisit.
 
 **Files:**
-- Create: `tests/fixtures/mizzima_article.html`
+- Create: `tests/fixtures/news_eleven_article.html`
 
-- [ ] **Step 1: Find a recent article URL**
+- [ ] **Step 1: Pick an article URL from the homepage**
 
-Open https://www.mizzimaburmese.com/ in a browser, click any post tile, copy the full URL. It will match the pattern `https://www.mizzimaburmese.com/YYYY/MM/DD/<id>`.
+Run from `/Users/jack/code/news-intelligence-platform`:
 
-Alternative (no browser): `uv run python pipelines/ingest_scrapers.py` (this is the existing PoC; it will run a homepage scrape and print `LoadInfo`). Then `uv run dlt pipeline scrapers show` and pick any `url` from the `articles` table.
+```bash
+UA="Mozilla/5.0 (compatible; NewsIntelBot/0.1)"
+curl -sL -A "$UA" https://news-eleven.com/ \
+  | grep -oE 'href="https://news-eleven\.com/article/[0-9]+"' \
+  | head -1
+```
+
+Expected: prints one match like `href="https://news-eleven.com/article/309833"`. Strip the `href="` prefix and trailing `"` to get the bare URL.
 
 - [ ] **Step 2: Save the article HTML to a fixture**
 
-Replace `<ARTICLE_URL>` below with the URL from Step 1.
+Replace `<ARTICLE_URL>` with the URL from Step 1.
 
 ```bash
 mkdir -p tests/fixtures
-curl -sL -A "Mozilla/5.0 (compatible; NewsIntelBot/0.1)" "<ARTICLE_URL>" \
-  > tests/fixtures/mizzima_article.html
+UA="Mozilla/5.0 (compatible; NewsIntelBot/0.1)"
+curl -sL -A "$UA" "<ARTICLE_URL>" > tests/fixtures/news_eleven_article.html
 ```
 
 - [ ] **Step 3: Sanity-check the fixture**
 
-Run: `wc -c tests/fixtures/mizzima_article.html`
-Expected: a non-trivial byte count (typically > 50 000). If it is small (< 5 000 bytes) the page may have been blocked or redirected; re-run with a different URL or check the response.
+```bash
+wc -c tests/fixtures/news_eleven_article.html
+head -c 200 tests/fixtures/news_eleven_article.html
+grep -c 'meta name="description"' tests/fixtures/news_eleven_article.html
+```
 
-Run: `head -c 200 tests/fixtures/mizzima_article.html`
-Expected: looks like real HTML (`<!DOCTYPE html>` or `<html ...>`).
+Expected:
+- byte count > 50 000 (a real News Eleven article is roughly 130 KB),
+- head looks like `<!DOCTYPE html>` followed by `<html ... lang="my" ...>`,
+- exactly 1 `meta name="description"` line (used by `parse_article` in Task 6).
+
+If the byte count is small (< 5 000) or the meta count is 0, retry with a different `/article/<int>` URL.
 
 - [ ] **Step 4: Commit**
 
 ```bash
-git add tests/fixtures/mizzima_article.html
-git commit -m "Add Mizzima article HTML fixture for parse tests"
+git add tests/fixtures/news_eleven_article.html
+git commit -m "Add News Eleven article HTML fixture for parse tests"
 ```
 
 ---
 
-## Task 6: `MizzimaBurmeseScraper.parse_article` fills `summary`
+## Task 6 (revised): Create `NewsElevenScraper` and wire it into the pipeline
 
 **Files:**
+- Create: `sources/scrapers/mm/news_eleven.py`
+- Modify: `pipelines/ingest_scrapers.py`
+- Modify: `data/config/sources.yaml`
 - Modify: `tests/test_scrapers.py` (append test)
-- Modify: `sources/scrapers/mm/mizzima_burmese.py`
 
-- [ ] **Step 1: Inspect the fixture to identify the summary selector**
+This task creates a brand-new outlet module and wires it in. The implementation order is: tests first (test of `parse_article` against the fixture), then the module, then the pipeline rewire, then `sources.yaml`.
 
-Open `tests/fixtures/mizzima_article.html` and look for one of:
+- [ ] **Step 1: Inspect the fixture and confirm the selector**
 
-- A `<meta name="description" content="...">` tag (most common; usually a 1-2 sentence summary).
-- A `<meta property="og:description" content="...">` tag.
-- The first `<p>` inside `<div class="post-content">` or `<article>` if neither meta tag is present.
+```bash
+grep -oE '<meta name="description"[^>]+>' tests/fixtures/news_eleven_article.html | head -1
+grep -oE '<meta property="og:description"[^>]+>' tests/fixtures/news_eleven_article.html | head -1
+```
 
-Pick whichever is present and carries the article's lede. The next step assumes you found one and writes the test against it. If only a body `<p>` is available, adapt the selector and assertion accordingly.
+Expected: both lines are present. `parse_article` will prefer `name="description"` and fall back to `og:description`.
 
 - [ ] **Step 2: Write the failing test**
 
@@ -383,36 +402,76 @@ Append to `tests/test_scrapers.py`:
 ```python
 from pathlib import Path
 
-from sources.scrapers.mm.mizzima_burmese import MizzimaBurmeseScraper
+from sources.scrapers.mm.news_eleven import NewsElevenScraper
 
 FIXTURES = Path(__file__).parent / "fixtures"
 
 
-def test_mizzima_parse_article_extracts_summary():
-    html = (FIXTURES / "mizzima_article.html").read_text(encoding="utf-8")
+def test_news_eleven_parse_article_extracts_summary():
+    html = (FIXTURES / "news_eleven_article.html").read_text(encoding="utf-8")
     soup = BeautifulSoup(html, "html.parser")
-    fields = MizzimaBurmeseScraper().parse_article(soup)
+    fields = NewsElevenScraper().parse_article(soup)
     summary = fields.get("summary")
     assert summary is not None
-    assert len(summary.strip()) > 20  # not just whitespace or a stub
+    assert len(summary.strip()) > 20  # not whitespace or a stub
 ```
 
 - [ ] **Step 3: Run the test, expect failure**
 
-Run: `uv run pytest tests/test_scrapers.py::test_mizzima_parse_article_extracts_summary -v`
-Expected: FAIL — `MizzimaBurmeseScraper.parse_article` still returns `{}` (inherited default), so `fields.get("summary")` is `None`.
+Run: `uv run pytest tests/test_scrapers.py::test_news_eleven_parse_article_extracts_summary -v`
+Expected: FAIL with `ModuleNotFoundError: No module named 'sources.scrapers.mm.news_eleven'`.
 
-- [ ] **Step 4: Implement `parse_article` on `MizzimaBurmeseScraper`**
+- [ ] **Step 4: Create `sources/scrapers/mm/news_eleven.py`**
 
-In `sources/scrapers/mm/mizzima_burmese.py`, add this method to the `MizzimaBurmeseScraper` class (place it after `parse`). The exact selector below is the most common case — adjust the body of the method if your fixture inspection in Step 1 pointed to a different element.
+Write the file:
 
 ```python
+"""News Eleven (Eleven Media Burmese) homepage scraper.
+
+Burmese-language outlet at https://news-eleven.com/ with no RSS feed.
+Article URLs follow the pattern `/article/<int>`. Article pages carry
+a `<meta name="description">` (Burmese text) that we use to populate
+the summary column.
+"""
+
+import re
+from typing import Any
+
+import dlt
+from bs4 import BeautifulSoup
+
+from sources.scrapers._base import Scraper
+
+ARTICLE_HREF_RE = re.compile(r"^https://news-eleven\.com/article/\d+$")
+MAX_HOMEPAGE_LINKS = 100
+
+
+class NewsElevenScraper(Scraper):
+    name = "News Eleven"
+    country = "MM"
+    base_url = "https://news-eleven.com/"
+    request_delay_s = 1.0
+
+    def parse(self, soup: BeautifulSoup) -> list[dict[str, Any]]:
+        """Pull article anchors from the homepage, dedupe by URL."""
+        rows: list[dict[str, Any]] = []
+        seen: set[str] = set()
+        for anchor in soup.find_all("a", href=True):
+            url = anchor["href"]
+            if not ARTICLE_HREF_RE.match(url) or url in seen:
+                continue
+            seen.add(url)
+            title = anchor.get_text(strip=True) or None
+            rows.append({"url": url, "title": title})
+            if len(rows) >= MAX_HOMEPAGE_LINKS:
+                break
+        return rows
+
     def parse_article(self, soup: BeautifulSoup) -> dict[str, Any]:
         """Pull the article summary from the article page itself.
 
-        Mizzima Burmese article pages carry a meta description; fall
-        back to the og:description and finally to the first paragraph
-        inside the main article body.
+        News Eleven article pages carry a meta description; fall back
+        to og:description.
         """
         meta = soup.find("meta", attrs={"name": "description"})
         if meta and meta.get("content"):
@@ -420,17 +479,18 @@ In `sources/scrapers/mm/mizzima_burmese.py`, add this method to the `MizzimaBurm
         og = soup.find("meta", attrs={"property": "og:description"})
         if og and og.get("content"):
             return {"summary": og["content"].strip()}
-        article = soup.find("article")
-        if article:
-            first_p = article.find("p")
-            if first_p:
-                return {"summary": first_p.get_text(strip=True)}
         return {}
+
+
+@dlt.resource(name="articles", primary_key="url", write_disposition="merge")
+def news_eleven():
+    """One row per article URL discovered on the News Eleven homepage."""
+    yield from NewsElevenScraper().run()
 ```
 
 - [ ] **Step 5: Run the test, expect pass**
 
-Run: `uv run pytest tests/test_scrapers.py::test_mizzima_parse_article_extracts_summary -v`
+Run: `uv run pytest tests/test_scrapers.py::test_news_eleven_parse_article_extracts_summary -v`
 Expected: PASS.
 
 - [ ] **Step 6: Run the full test file**
@@ -438,63 +498,131 @@ Expected: PASS.
 Run: `uv run pytest tests/test_scrapers.py -v`
 Expected: 4 passed.
 
-- [ ] **Step 7: Commit**
+- [ ] **Step 7: Rewire `pipelines/ingest_scrapers.py`**
+
+Open `pipelines/ingest_scrapers.py`. Replace the import + yield to point at News Eleven instead of Mizzima. The file's current shape is:
+
+```python
+import dlt
+
+from sources.scrapers.mm.mizzima_burmese import mizzima_burmese
+
+
+@dlt.source(name="scrapers")
+def scrapers_source():
+    yield mizzima_burmese()
+```
+
+Change it to:
+
+```python
+import dlt
+
+from sources.scrapers.mm.news_eleven import news_eleven
+
+
+@dlt.source(name="scrapers")
+def scrapers_source():
+    yield news_eleven()
+```
+
+Leave the rest of the file (the `run()` function and the `if __name__ == "__main__"` block) untouched.
+
+- [ ] **Step 8: Confirm the rewired pipeline still imports cleanly**
 
 ```bash
-git add tests/test_scrapers.py sources/scrapers/mm/mizzima_burmese.py
-git commit -m "Mizzima: fill article summary via meta description with og fallback"
+uv run python -c "from pipelines.ingest_scrapers import scrapers_source; print('ok')"
+```
+
+Expected: `ok` printed, no traceback.
+
+- [ ] **Step 9: Update `data/config/sources.yaml`**
+
+Two edits inside the `MM:` section:
+
+1. Add the News Eleven entry at the end of the MM list (after the existing Mizzima Burmese block):
+
+```yaml
+    - name: Eleven Media Burmese
+      url: https://news-eleven.com/
+      rss: ""
+      language: my
+      scrape: beautifulsoup
+      robots_ok: unknown
+      notes: "No RSS. Scraped via news_eleven.py."
+```
+
+2. Update the `notes:` line of the existing Mizzima Burmese entry to flag that it is currently unreachable:
+
+Find:
+```yaml
+      notes: "No RSS on Burmese edition. Scraped via mizzima_burmese.py."
+```
+
+Replace with:
+```yaml
+      notes: "No RSS on Burmese edition. Cloudflare-blocks plain HTTP fetches as of 2026-05-25. mizzima_burmese.py stays in tree, currently unwired."
+```
+
+Do not touch any other entries in `sources.yaml`.
+
+- [ ] **Step 10: Commit**
+
+```bash
+git add tests/test_scrapers.py sources/scrapers/mm/news_eleven.py pipelines/ingest_scrapers.py data/config/sources.yaml
+git commit -m "Add News Eleven BS4 scraper, swap Mizzima out of the pipeline"
 ```
 
 ---
 
-## Task 7: End-to-end smoke check
+## Task 7 (revised): End-to-end smoke check via News Eleven
 
 **Files:** none modified. Verification only.
 
-- [ ] **Step 1: Run the existing pipeline**
+- [ ] **Step 1: Run the rewired pipeline**
 
 Run: `PYTHONPATH=. uv run python pipelines/ingest_scrapers.py`
-Expected: a `LoadInfo` line printed at the end, no traceback. The run takes roughly 1-2 minutes because we now follow each homepage URL to its article page at 1 req/s.
+
+Expected: a `LoadInfo` line printed at the end, no traceback. The run typically takes 1-2 minutes because each homepage URL is followed to its article page at 1 req/s.
 
 - [ ] **Step 2: Inspect the loaded `articles` table**
-
-Run: `uv run dlt pipeline scrapers show`
-This opens a Streamlit table viewer. Confirm the `articles` table has rows where `summary IS NOT NULL`.
-
-Or, if you prefer raw SQL:
 
 ```bash
 uv run python -c "import duckdb; con = duckdb.connect('scrapers.duckdb'); print(con.execute(\"select count(*) total, count(summary) filled from scrapers_raw.articles\").fetchall())"
 ```
 
-Expected output: a tuple where `filled` is greater than 0 (most rows should have a non-NULL summary).
+Expected: a tuple `[(N, K)]` where `K > 0` (rows with non-NULL summary).
+
+Or open `uv run dlt pipeline scrapers show` to browse interactively and confirm by eye.
 
 - [ ] **Step 3: If `filled` is 0**
 
 Cases and remedies:
 
-- All article fetches failed: check `request_delay_s` and the User-Agent; re-run.
-- Selector chosen in Task 6 does not match real Mizzima pages: inspect `tests/fixtures/mizzima_article.html` again and update the `parse_article` body, re-run tests, re-run the smoke.
-- Mizzima blocked the bot: identify in `tests/README.md` style notes ("Bot UA sometimes blocked; identify as browser UA" is the exact note in `sources.yaml` for Irrawaddy; Mizzima may also need that treatment). Out of scope for this plan; record as a follow-up.
+- The homepage anchor selector returned nothing (no `/article/<int>` matches): inspect the homepage with `curl ...` and adjust `ARTICLE_HREF_RE` or the loop.
+- All article fetches failed: check `request_delay_s`, the User-Agent, and the news-eleven.com response status with a manual curl.
+- Articles have no `<meta name="description">` (rare): extend `parse_article` to fall back to a body paragraph extractor.
 
 If `filled > 0`, the task is done. No commit on a successful smoke (it is verification).
 
 ---
 
-## Self-review check (run after writing the plan)
+## Self-review check (revised after Cloudflare-block discovery)
 
 The plan covers every requirement in `docs/superpowers/specs/2026-05-25-article-page-backfill-design.md`:
 
-- **Add `parse_article` default `{}`**: Task 2.
-- **Add `fetch_article` swallowing `requests.RequestException`**: Task 3.
-- **Update `run()` to merge article fields with homepage-wins precedence**: Task 4.
-- **Implement Mizzima `parse_article` for `summary`**: Task 6 (uses fixture from Task 5).
+- **Add `parse_article` default `{}`**: Task 2. Done at commit `66856c3`.
+- **Add `fetch_article` swallowing `requests.RequestException`**: Task 3. Done at commit `544434c`.
+- **Update `run()` to merge article fields with homepage-wins precedence**: Task 4 + the empty-string precedence fix. Done at commits `ed1a8f9` and `b8e6e07`.
+- **Create `NewsElevenScraper.parse_article` returning `{"summary": ...}`**: Task 6 (uses fixture from Task 5).
+- **Wire `news_eleven` into `pipelines/ingest_scrapers.py`, unwire `mizzima_burmese`**: Task 6 Step 7.
+- **Add News Eleven entry to `data/config/sources.yaml`, annotate Mizzima as Cloudflare-blocked**: Task 6 Step 9.
 - **Unit tests in `tests/test_scrapers.py`**: built up across Tasks 2, 3, 4, 6.
-- **Fixture in `tests/fixtures/mizzima_article.html`**: Task 5.
-- **Add `pytest` to `requirements.txt`**: Task 1.
+- **Fixture in `tests/fixtures/news_eleven_article.html`**: Task 5.
+- **Add `pytest` to `requirements.txt`**: Task 1. Done at commit `79018b7`.
 - **Smoke run via existing entry point**: Task 7.
 
-Out of scope (per spec): retries, robots.txt, skip-already-fetched, structured logging, new outlets, `body` column, Kafka. None of these appear in the tasks.
+Out of scope (per spec): retries, robots.txt, skip-already-fetched, structured logging, additional outlets beyond News Eleven, `body` column, Kafka, Cloudflare-defeating fetch. None of these appear in the tasks.
 
 ## Notes for the executor
 

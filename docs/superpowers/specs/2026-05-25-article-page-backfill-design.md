@@ -3,24 +3,36 @@
 **Date:** 2026-05-25
 **Repo:** news-intelligence-platform
 **Authors:** Jack (EA specialist) + Claude (brainstorming session)
-**Status:** Approved design, awaiting implementation plan.
+**Status:** Approved (revised 2026-05-25 after Cloudflare-block discovery). Awaiting implementation continuation.
 
 ## Goal
 
-Extend the existing `Scraper` base class in `sources/scrapers/_base.py` with an article-page backfill step. Today the homepage parser yields rows with only `title` + `url` (and, for Mizzima, a `published_at` derived from the URL path). `summary` is always NULL. After this change, each yielded row optionally has `summary` filled from the article page itself.
+Extend the existing `Scraper` base class in `sources/scrapers/_base.py` with an article-page backfill step. Today the homepage parser yields rows with only `title` + `url`. `summary` is always NULL. After this change, each yielded row optionally has `summary` filled from the article page itself.
 
-Mizzima Burmese is the first (and currently only) consumer of the new path. Future BS4 outlets inherit the same hook for free.
+The first consumer of the new path is a new BS4 outlet: **Eleven Media Burmese** (`https://news-eleven.com/`). Future BS4 outlets inherit the same hook for free.
+
+## Why this outlet, why not Mizzima
+
+The original spec named Mizzima Burmese (`https://www.mizzimaburmese.com/`) as the first consumer. During implementation we discovered Mizzima now sits behind Cloudflare's challenge layer (HTTP 403 + `cf-mitigated: challenge`), which makes the existing PoC unrunnable in practice. The team's prior `sources/scrapers/mm/mizzima_burmese.py` stays in tree (unwired) as future reference; we will revisit it if we add a Cloudflare-defeating fetcher.
+
+Eleven Media Burmese was picked because it:
+
+- Returns real HTML (HTTP 200, ~130 KB pages) with no Cloudflare gate.
+- Is a Burmese-language outlet (`<html lang="my">`), keeping the Long Tail thesis intact.
+- Has no RSS feed (`/feed` and `/feed/` both 404), so it earns BS4 scraping rather than duplicating RSS.
+- Carries `<meta name="description">` and `<meta property="og:description">` on article pages, so `parse_article` can populate `summary` cleanly.
+- Uses stable, predictable URL paths (`/article/<int>`).
 
 ## Why this is the right next step
 
-The `sources.yaml` registry already covers DE / US / IT / MM / KZ via RSS or APIs. The only outlet currently flagged `scrape: beautifulsoup` is Mizzima Burmese, because the Burmese edition has no RSS. So "more BS4 scrapers" mostly duplicates RSS work that already exists. The remaining gap in the BS4 path is the explicit "out of scope for the PoC" line in `_base.py`'s docstring: homepage cards do not carry summary text, so summaries stay NULL until a follow-up GET happens per article.
+The `sources.yaml` registry already covers DE / US / IT / MM / KZ via RSS or APIs. The remaining gap is the explicit "out of scope for the PoC" line in `_base.py`'s docstring: homepage cards do not carry summary text, so summaries stay NULL until a follow-up GET happens per article.
 
 Filling `summary` is what makes scraped rows usable downstream (embeddings, topic modelling, dashboard preview text). This change unblocks every BS4 outlet we add later.
 
 ## EA framing
 
 - [[Veracity]]. Title-only rows are low-veracity input for topic modelling. Summaries materially raise the V.
-- [[Long Tail]]. Mizzima Burmese is the canonical RSS-less Long Tail outlet. The pattern unlocks more such outlets without a redesign.
+- [[Long Tail]]. Eleven Media Burmese is an RSS-less Long Tail outlet. The pattern unlocks more such outlets without a redesign.
 - [[Lambda vs Kappa]]. Scrapers remain in the **Lambda batch arm** of the hybrid architecture (per `CLAUDE.md`). This change does not touch the Kafka / Kappa arm.
 - [[Variety]]. The schema is unchanged. Variety stays high because we keep the unified row shape across RSS, API, and BS4 sources.
 
@@ -28,15 +40,18 @@ Filling `summary` is what makes scraped rows usable downstream (embeddings, topi
 
 In scope:
 
-- Add `parse_article(soup) -> dict` to `Scraper` with a `{}` default (so homepage-only subclasses keep working).
-- Add `fetch_article(url) -> dict` helper that GETs the article, calls `parse_article`, swallows network errors, and respects `request_delay_s`.
-- Update `Scraper.run()` to call `fetch_article` for every yielded URL and merge its fields into the row (homepage value wins, article fields fill NULLs only).
-- Implement `MizzimaBurmeseScraper.parse_article` returning `{"summary": ...}`. Selector identified during implementation by inspecting one Mizzima article page.
+- Add `parse_article(soup) -> dict` to `Scraper` with a `{}` default (so homepage-only subclasses keep working). **Done**.
+- Add `fetch_article(url) -> dict` helper that GETs the article, calls `parse_article`, swallows network errors, and respects `request_delay_s`. **Done**.
+- Update `Scraper.run()` to call `fetch_article` for every yielded URL and merge its fields into the row (homepage value wins, article fields fill NULLs only). **Done**.
+- Create `sources/scrapers/mm/news_eleven.py` implementing `NewsElevenScraper` (homepage parser + `parse_article` returning `{"summary": ...}`).
+- Wire `news_eleven` into `pipelines/ingest_scrapers.py` and stop wiring `mizzima_burmese`.
+- Add a `News Eleven (Eleven Media Burmese)` entry to `data/config/sources.yaml` flagged `scrape: beautifulsoup`. Optionally flip the existing Mizzima Burmese entry to indicate it is blocked (note in `notes`), but leave the file in tree.
 - Unit tests for the new code paths.
-- Saved Mizzima article HTML fixture for the parse test.
+- Saved News Eleven article HTML fixture for the parse test.
 
 Out of scope (deferred):
 
+- Defeating Cloudflare (cloudscraper, curl_cffi, browserless) to re-enable the Mizzima PoC. Tracked as an open question; would justify its own design.
 - Skip-already-fetched optimisation (re-fetching every URL on every run is wasteful but safe; merge on `url` keeps the table tidy).
 - Retries / backoff.
 - Robots.txt check (matches the current PoC; documented as an open question).
@@ -49,15 +64,17 @@ Out of scope (deferred):
 
 | path                                                      | change |
 |-----------------------------------------------------------|--------|
-| `sources/scrapers/_base.py`                               | edit. Add `parse_article` and `fetch_article`. Update `run()`. |
-| `sources/scrapers/mm/mizzima_burmese.py`                  | edit. Add `parse_article` returning `{"summary": ...}`. |
-| `tests/test_scrapers.py`                                  | new. All scraper tests (default `parse_article`, `fetch_article` error swallow, `run()` merge precedence, Mizzima fixture parse). Matches the per-source layout documented in `tests/README.md`. |
-| `tests/fixtures/mizzima_article.html`                     | new. One saved Mizzima article page. |
-| `requirements.txt`                                        | edit. Add `pytest>=8` (currently absent; `tests/README.md` says `uv run pytest` is the runner). |
+| `sources/scrapers/_base.py`                               | edit. Add `parse_article` and `fetch_article`. Update `run()`. **Done**. |
+| `sources/scrapers/mm/news_eleven.py`                      | new. `NewsElevenScraper` + `news_eleven()` dlt resource. |
+| `pipelines/ingest_scrapers.py`                            | edit. Import and yield `news_eleven` instead of `mizzima_burmese`. |
+| `data/config/sources.yaml`                                | edit. Add News Eleven entry under MM with `scrape: beautifulsoup`. Add a `notes:` line to the Mizzima Burmese entry that it is currently Cloudflare-blocked. |
+| `tests/test_scrapers.py`                                  | edit. All scraper tests (default `parse_article`, `fetch_article` error swallow, `run()` merge precedence — **done**; News Eleven fixture parse — pending). Matches the per-source layout in `tests/README.md`. |
+| `tests/fixtures/news_eleven_article.html`                 | new. One saved News Eleven article page. |
+| `requirements.txt`                                        | edit. Add `pytest>=8`. **Done**. |
 
-`tests/` currently contains only `__init__.py` and `README.md`. This change creates the `tests/fixtures/` subdirectory.
+`tests/` originally contained only `__init__.py` and `README.md`. This change creates the `tests/fixtures/` subdirectory.
 
-No changes to `pipelines/ingest_scrapers.py`, `data/config/sources.yaml`, schema, or any other outlet.
+`sources/scrapers/mm/mizzima_burmese.py` is **left in tree, unwired**. No changes to schema or any other outlet.
 
 ## Architecture
 
@@ -117,9 +134,21 @@ for partial in self.parse(BeautifulSoup(html, "html.parser")):
 
 Precedence rule: **homepage value wins**; `article_fields` fill NULLs only. Justified because homepage parsers are written against deterministic CSS selectors per outlet; article pages may have noisy `<meta>` tags or boilerplate.
 
-### `MizzimaBurmeseScraper.parse_article` (new method)
+### `NewsElevenScraper` (new module `sources/scrapers/mm/news_eleven.py`)
 
-Returns `{"summary": <text>}`. Selector is identified during implementation by inspecting one Mizzima article page (`curl https://www.mizzimaburmese.com/<some-2026-path> | less`) and choosing the right `<meta name="description">` or main `<article>` paragraph. The plan, not the spec, picks the selector.
+Subclasses `Scraper`. Attributes:
+
+- `name = "News Eleven"`
+- `country = "MM"`
+- `base_url = "https://news-eleven.com/"`
+- `request_delay_s = 1.0`
+
+Methods:
+
+- `parse(soup) -> list[dict]`: extract all `<a href="https://news-eleven.com/article/<int>">` anchors, dedupe, yield one partial per article with `url` and `title` (the anchor text, stripped). Capped to first 100 unique URLs per run (cheap parity with the existing Mizzima cap of one homepage scrape).
+- `parse_article(soup) -> dict`: return `{"summary": <text>}` from the article page's `<meta name="description">`. Fall back to `<meta property="og:description">`. Returns `{}` if neither is present.
+
+The module also exposes a `news_eleven` dlt resource (`@dlt.resource(name="articles", primary_key="url", write_disposition="merge")`) that yields from `NewsElevenScraper().run()`. Mirrors the existing `mizzima_burmese()` resource shape.
 
 ## Data flow
 
@@ -162,10 +191,10 @@ Matches the print-based style already in use in `_base.py` and `mizzima_burmese.
 
 Unit tests (pytest, no network). All in `tests/test_scrapers.py` per the team's `tests/README.md` convention.
 
-- `test_parse_article_default()`: confirm `Scraper.parse_article(soup) == {}`.
-- `test_run_merges_article_fields()`: subclass `Scraper`, stub `fetch` and `fetch_article` to return canned values, assert `run()` yields rows with homepage values preferred and article values filling NULLs. Monkeypatch `time.sleep` to no-op.
-- `test_fetch_article_swallows_errors()`: monkeypatch `Scraper.fetch` to raise `requests.RequestException`, assert `fetch_article` returns `{}`.
-- `test_mizzima_parse_article()`: load `tests/fixtures/mizzima_article.html`, pass through `MizzimaBurmeseScraper().parse_article(BeautifulSoup(html, "html.parser"))`, assert non-empty `summary`.
+- `test_parse_article_default()`: confirm `Scraper.parse_article(soup) == {}`. **Done**.
+- `test_run_merges_article_fields()`: subclass `Scraper`, stub `fetch` and `fetch_article` to return canned values, assert `run()` yields rows with homepage values preferred and article values filling NULLs. Monkeypatch `time.sleep` to no-op. Covers an empty-string regression case. **Done**.
+- `test_fetch_article_swallows_errors()`: monkeypatch `Scraper.fetch` to raise `requests.RequestException`, assert `fetch_article` returns `{}`. **Done**.
+- `test_news_eleven_parse_article()`: load `tests/fixtures/news_eleven_article.html`, pass through `NewsElevenScraper().parse_article(BeautifulSoup(html, "html.parser"))`, assert non-empty `summary`.
 
 Developer smoke (opt-in):
 
@@ -185,6 +214,7 @@ Not tested:
 - Add a `body` column for downstream embeddings.
 - Move scraper output to the Kafka producer pattern so it also feeds ClickHouse.
 - Identify additional RSS-less Long Tail outlets that justify new BS4 subclasses.
+- Resurrect the Mizzima Burmese PoC with a Cloudflare-defeating fetcher (cloudscraper / curl_cffi / browserless). Currently unwired.
 
 ## Next step
 
