@@ -8,9 +8,17 @@ Team plan for the *Enterprise Architectures for Big Data* project. Owners are Ja
 - **Finish (prototype + report submission)**: ~2026-07-06
 - **Assessment**: Report 36%, Presentation 30%, Oral Exam 24%, Assignments 10%
 
-## Current status
+## Current status (refreshed 2026-05-25)
 
 Nadi and Karina have already started extracting data (initial pull). The corpus is far below the target volume. The plan treats **data extraction as an ongoing workstream across Weeks 1 to 3**, not a one-off Week 1 task. The Week 1 deliverable is consolidating what exists and **agreeing on the extraction targets** that the next two weeks will hit.
+
+**Pulled forward from Week 2 (done already):**
+- Kafka broker + ClickHouse server live in `infra/docker-compose.yml`.
+- dlt ClickHouse destination wired (`.dlt/config.toml` + `.dlt/secrets.toml.example`, `dlt[clickhouse]` in `requirements.txt`).
+- Streaming consumer to ClickHouse (`pipelines/kafka/consumer_to_clickhouse.py`) and RSS + Google News producer (`pipelines/kafka/producer_rss.py`) shipped.
+- BeautifulSoup scraping PoC for Mizzima Burmese landed; cleaning step (HTML strip + URL canonicalisation + dedup) merged.
+
+**Still open for Week 1:** consolidating existing extracts under `data/raw/`, filling the `<existing>` row of the Extraction Targets table, and confirming Week 3 target numbers.
 
 ### Extraction targets (working numbers, refine in Week 1)
 
@@ -85,11 +93,12 @@ docs/
 ## Week 2 (2026-06-01 to 06-08): Pipeline + storage spine + bulk extraction
 
 ### Nadi
-- Flesh out `sources/newsapi.py` (stub today), `sources/rss.py` (new). GDELT is already split out. Wire all three through `pipelines/ingest_apis.py` and `pipelines/ingest_rss.py`. Each writes to DuckDB raw lake first.
+- Flesh out `sources/newsapi.py` (stub today), `sources/rss.py` (now live). GDELT is already split out. Wire all three through `pipelines/ingest_apis.py` and `pipelines/ingest_rss.py`. Each writes to DuckDB raw lake first.
 - **Bulk extraction**: kick off the scaled pull (target ~50% of Week 3 target by end of Week 2). Use dlt's `dlt.sources.incremental` so reruns are cheap.
-- Stand up ClickHouse locally (`docker-compose.yml` at the repo root). Single-node is fine.
-- Add a dlt destination for ClickHouse. Pattern: raw to DuckDB, modelled aggregates to ClickHouse.
-- Document secrets needed in `.dlt/secrets.toml` (NewsAPI key, GDELT, ClickHouse password).
+- ~~Stand up ClickHouse locally~~ **done in Week 1** (see `infra/docker-compose.yml`).
+- ~~Add a dlt destination for ClickHouse~~ **done in Week 1** (see `.dlt/config.toml`). Pattern: raw to DuckDB, modelled aggregates to ClickHouse.
+- ~~Document secrets needed in `.dlt/secrets.toml`~~ **done in Week 1** (template at `.dlt/secrets.toml.example`).
+- First end-to-end streaming run into ClickHouse via `pipelines/kafka/producer_rss.py` + `consumer_to_clickhouse.py`. Confirm dedup-on-url via merge disposition holds at volume.
 
 ### Karina
 - Expand `sources.yaml` to ~5 outlets per country (target ~25 outlets total).
