@@ -16,8 +16,20 @@ import os
 
 import clickhouse_connect
 import pandas as pd
+import pydeck as pdk
 import streamlit as st
 from streamlit_autorefresh import st_autorefresh
+
+# Country centroids for the live coverage map. Rough centers, good
+# enough for a bubble at country scale. Extend when new countries
+# join the catalogue.
+COUNTRY_CENTROIDS: dict[str, tuple[float, float]] = {
+    "DE": (51.0, 10.4),
+    "US": (39.8, -98.6),
+    "IT": (41.9, 12.6),
+    "MM": (21.9, 95.9),
+    "KZ": (48.0, 67.0),
+}
 
 CH_HOST = os.getenv("CLICKHOUSE_HOST", "localhost")
 CH_PORT = int(os.getenv("CLICKHOUSE_HTTP_PORT", "8123"))
@@ -32,12 +44,17 @@ st.set_page_config(page_title="News Intel — live feed", layout="wide")
 
 @st.cache_resource
 def client():
+    # autogenerate_session_id=False so the shared client does not bind
+    # queries to a single ClickHouse session. Streamlit autorefresh can
+    # fire overlapping script reruns; without this flag, clickhouse-connect
+    # raises "concurrent queries within the same session".
     return clickhouse_connect.get_client(
         host=CH_HOST,
         port=CH_PORT,
         username=CH_USER,
         password=CH_PASSWORD,
         database=CH_DB,
+        autogenerate_session_id=False,
     )
 
 
@@ -136,6 +153,24 @@ def fetch_arrivals(window_min: int) -> pd.DataFrame:
 
 
 @st.cache_data(ttl=2)
+def fetch_country_pulse() -> pd.DataFrame:
+    """Per-country totals plus last-minute arrivals. Drives the map.
+    `recent` is the heat signal: countries that are actively
+    ingesting glow; quiet ones fade to baseline color."""
+    return _query(
+        f"""
+        SELECT
+            country_target,
+            count() AS articles,
+            countIf(extracted_at > now() - INTERVAL 1 MINUTE) AS recent
+        FROM {TABLE}
+        WHERE country_target IS NOT NULL
+        GROUP BY country_target
+        """
+    )
+
+
+@st.cache_data(ttl=2)
 def fetch_distinct_sources() -> set[str]:
     df = _query(f"SELECT DISTINCT source FROM {TABLE}")
     return set(df["source"].dropna().tolist())
@@ -187,6 +222,60 @@ if not arrivals.empty:
     )
 else:
     st.info("No recent arrivals yet. Bring up the producer with ./scripts/dev_stack.sh.")
+
+st.subheader("Live coverage map")
+pulse = fetch_country_pulse()
+if not pulse.empty:
+    pulse = pulse.copy()
+    pulse["lat"] = pulse["country_target"].map(
+        lambda c: COUNTRY_CENTROIDS.get(c, (0.0, 0.0))[0]
+    )
+    pulse["lon"] = pulse["country_target"].map(
+        lambda c: COUNTRY_CENTROIDS.get(c, (0.0, 0.0))[1]
+    )
+    # Drop rows whose country code isn't on the centroid map. Don't
+    # plot a phantom bubble at (0,0) in the Gulf of Guinea.
+    pulse = pulse[pulse["country_target"].isin(COUNTRY_CENTROIDS)]
+    max_articles = max(int(pulse["articles"].max() or 0), 1)
+    max_recent = max(int(pulse["recent"].max() or 0), 1)
+    # Radius in meters. sqrt scaling so a country with 10x articles
+    # doesn't draw a bubble that eats the continent.
+    pulse["radius"] = (
+        (pulse["articles"] / max_articles).pow(0.5) * 600_000 + 80_000
+    )
+    # Heat: red ramps with last-minute arrivals; quiet countries stay
+    # cool blue-grey. Alpha bumps when actively streaming.
+    heat = (pulse["recent"] / max_recent).clip(0, 1)
+    pulse["r"] = (60 + 195 * heat).round().astype(int)
+    pulse["g"] = (120 * (1 - heat)).round().astype(int) + 40
+    pulse["b"] = (200 * (1 - heat)).round().astype(int) + 30
+    pulse["a"] = (160 + 95 * (pulse["recent"] > 0)).astype(int)
+    layer = pdk.Layer(
+        "ScatterplotLayer",
+        data=pulse,
+        get_position="[lon, lat]",
+        get_radius="radius",
+        radius_min_pixels=6,
+        radius_max_pixels=90,
+        get_fill_color="[r, g, b, a]",
+        pickable=True,
+        stroked=True,
+        get_line_color=[255, 255, 255, 180],
+        line_width_min_pixels=1,
+    )
+    view = pdk.ViewState(latitude=30.0, longitude=30.0, zoom=1.2, pitch=25)
+    deck = pdk.Deck(
+        layers=[layer],
+        initial_view_state=view,
+        tooltip={
+            "text": "{country_target}\narticles: {articles}\nlast min: {recent}"
+        },
+        map_provider="carto",
+        map_style="dark",
+    )
+    st.pydeck_chart(deck, use_container_width=True)
+else:
+    st.info("No country-tagged rows yet.")
 
 st.subheader("By country")
 by_country = fetch_by_country()
