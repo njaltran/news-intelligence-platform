@@ -51,14 +51,11 @@ Out of scope (deferred):
 |-----------------------------------------------------------|--------|
 | `sources/scrapers/_base.py`                               | edit. Add `parse_article` and `fetch_article`. Update `run()`. |
 | `sources/scrapers/mm/mizzima_burmese.py`                  | edit. Add `parse_article` returning `{"summary": ...}`. |
-| `tests/scrapers/__init__.py`                              | new. Subpackage marker. |
-| `tests/scrapers/test_parse_article_default.py`            | new. Default returns `{}`. |
-| `tests/scrapers/test_run_merges_article_fields.py`        | new. Precedence and NULL-fill behaviour. |
-| `tests/scrapers/test_fetch_article_swallows_errors.py`    | new. Failure returns `{}`. |
-| `tests/scrapers/test_mizzima_parse_article.py`            | new. Fixture-driven parse test. |
+| `tests/test_scrapers.py`                                  | new. All scraper tests (default `parse_article`, `fetch_article` error swallow, `run()` merge precedence, Mizzima fixture parse). Matches the per-source layout documented in `tests/README.md`. |
 | `tests/fixtures/mizzima_article.html`                     | new. One saved Mizzima article page. |
+| `requirements.txt`                                        | edit. Add `pytest>=8` (currently absent; `tests/README.md` says `uv run pytest` is the runner). |
 
-`tests/` currently contains only `__init__.py` and `README.md`. This change creates the `tests/scrapers/` and `tests/fixtures/` subdirectories.
+`tests/` currently contains only `__init__.py` and `README.md`. This change creates the `tests/fixtures/` subdirectory.
 
 No changes to `pipelines/ingest_scrapers.py`, `data/config/sources.yaml`, schema, or any other outlet.
 
@@ -163,12 +160,12 @@ Matches the print-based style already in use in `_base.py` and `mizzima_burmese.
 
 ## Testing
 
-Unit tests (pytest, no network):
+Unit tests (pytest, no network). All in `tests/test_scrapers.py` per the team's `tests/README.md` convention.
 
-- `tests/scrapers/test_parse_article_default.py`: confirm `Scraper.parse_article(soup) == {}`.
-- `tests/scrapers/test_run_merges_article_fields.py`: subclass `Scraper`, stub `fetch` and `fetch_article` to return canned values, assert `run()` yields rows with homepage values preferred and article values filling NULLs. Monkeypatch `time.sleep` to no-op.
-- `tests/scrapers/test_fetch_article_swallows_errors.py`: monkeypatch `Scraper.fetch` to raise `requests.RequestException`, assert `fetch_article` returns `{}`.
-- `tests/scrapers/test_mizzima_parse_article.py`: load `tests/fixtures/mizzima_article.html`, pass through `MizzimaBurmeseScraper().parse_article(BeautifulSoup(html, "html.parser"))`, assert non-empty `summary`.
+- `test_parse_article_default()`: confirm `Scraper.parse_article(soup) == {}`.
+- `test_run_merges_article_fields()`: subclass `Scraper`, stub `fetch` and `fetch_article` to return canned values, assert `run()` yields rows with homepage values preferred and article values filling NULLs. Monkeypatch `time.sleep` to no-op.
+- `test_fetch_article_swallows_errors()`: monkeypatch `Scraper.fetch` to raise `requests.RequestException`, assert `fetch_article` returns `{}`.
+- `test_mizzima_parse_article()`: load `tests/fixtures/mizzima_article.html`, pass through `MizzimaBurmeseScraper().parse_article(BeautifulSoup(html, "html.parser"))`, assert non-empty `summary`.
 
 Developer smoke (opt-in):
 
