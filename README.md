@@ -80,7 +80,7 @@ uv pip install -r requirements.txt
 uv run python rest_api_pipeline.py
 
 # launch dashboard
-uv run marimo edit gdelt_dashboard.py
+uv run marimo edit dashboard/app.py
 ```
 
 dlt resolves `.dlt/secrets.toml` and configs from cwd, so all commands run from the repo root.
@@ -138,7 +138,6 @@ dlt resolves `.dlt/secrets.toml` and configs from cwd, so all commands run from 
 ├── .github/
 │   └── pull_request_template.md
 ├── rest_api_pipeline.py       # to be split into sources/ + pipelines/  (legacy, see code-layout doc)
-├── gdelt_dashboard.py         # to be moved to dashboard/app.py         (legacy)
 ├── requirements.txt
 ├── CONTRIBUTING.md
 ├── LICENSE

@@ -33,9 +33,9 @@ Existing files at the repo root will be moved as follows. Migration is a follow-
 | Current file | Target location |
 |--------------|-----------------|
 | `rest_api_pipeline.py` | split into `sources/newsapi.py`, `sources/gdelt.py`, `pipelines/ingest_apis.py` |
-| `gdelt_dashboard.py` | `dashboard/app.py` |
+| ~~`gdelt_dashboard.py`~~ | ~~`dashboard/app.py`~~ **done** |
 
-Both files stay at root until the migration PRs land, so nothing breaks in the meantime.
+`rest_api_pipeline.py` stays at root until its migration PR lands.
 
 ## Naming
 

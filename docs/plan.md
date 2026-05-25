@@ -123,7 +123,7 @@ docs/
 
 ### Nadi
 - ClickHouse modelled tables: `country_topic_daily`, `narrative_divergence`, `top_outlets_per_topic`.
-- Wire `gdelt_dashboard.py` (marimo) to read from ClickHouse instead of DuckDB.
+- Wire `dashboard/app.py` (marimo) to read from ClickHouse instead of DuckDB.
 
 ### Karina
 - Walk-through script for the presentation: which 3 stories does the demo tell?
