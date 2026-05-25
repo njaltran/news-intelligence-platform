@@ -10,9 +10,9 @@ Where code lives and why. Keep each concern in its own folder so the team can wo
 | `sources/scrapers/` | BeautifulSoup scrapers wrapped as dlt resources. One file per outlet, organised by country (`mm/`, `kz/`). | Jack |
 | `processing/` | Post-ingestion transforms: clean, embed, topic-model, compute divergence. | Nadi (Jack reviews schema) |
 | `warehouse/` | Destination configs (DuckDB raw, ClickHouse modelled) + DDL + model schemas. | Nadi + Jack |
-| `dashboard/` | marimo notebook (`app.py`). Reads from ClickHouse. | All |
-| `pipelines/` | Thin entry points wiring sources to destinations. One file per batch. **No business logic.** | Nadi |
-| `scripts/` | One-off CLI helpers (source validation, schema dumps). | Anyone |
+| `dashboard/` | Two views over ClickHouse: `streamlit_app.py` for the live Kappa-path feed (auto-refresh, sparklines), `app.py` for the marimo narrative-divergence notebook (planned full story). | All |
+| `pipelines/` | Thin entry points wiring sources to destinations. Batch arm at the top level (`ingest_apis.py`, `ingest_rss.py`, `ingest_scrapers.py`), streaming arm under `pipelines/kafka/` (Kappa path: producers + dlt consumer). **No business logic.** | Nadi |
+| `scripts/` | CLI helpers. Currently: `dev_stack.sh` (one-command local dev loop: broker + consumer + producer + Streamlit). Future: source validation, schema dumps. | Anyone |
 | `tests/` | pytest suite mirroring the source layout. | Author of code under test |
 
 ## Dependency direction

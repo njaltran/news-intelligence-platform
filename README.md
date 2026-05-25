@@ -91,8 +91,12 @@ PYTHONPATH=. uv run python pipelines/ingest_rss.py
 PYTHONPATH=. uv run python pipelines/kafka/consumer_to_clickhouse.py
 PYTHONPATH=. uv run python pipelines/kafka/producer_rss.py
 
-# launch dashboard
-uv run marimo edit dashboard/app.py
+# or: one-command local dev loop (broker + consumer + producer + dashboard, merged log tail)
+./scripts/dev_stack.sh
+
+# launch dashboards
+uv run streamlit run dashboard/streamlit_app.py    # live-feed view over the Kappa path
+uv run marimo edit dashboard/app.py                # narrative-divergence notebook
 ```
 
 dlt resolves `.dlt/secrets.toml` and configs from cwd, so all commands run from the repo root. `PYTHONPATH=.` is needed because `pipelines/*.py` import from the sibling `sources/` package and Python only auto-adds the script's own directory to `sys.path`.
@@ -119,8 +123,9 @@ dlt resolves `.dlt/secrets.toml` and configs from cwd, so all commands run from 
 │   ├── destinations.py        # DuckDB raw + ClickHouse DWH
 │   ├── models.py
 │   └── ddl.sql
-├── dashboard/                 # marimo dashboard
-│   └── app.py
+├── dashboard/                 # dashboards
+│   ├── app.py                 # marimo narrative-divergence notebook (planned full view)
+│   └── streamlit_app.py       # lightweight live-feed view over the Kappa path
 ├── pipelines/                 # entry points (thin wiring)         (Nadi)
 │   ├── ingest_apis.py
 │   ├── ingest_rss.py
@@ -129,12 +134,15 @@ dlt resolves `.dlt/secrets.toml` and configs from cwd, so all commands run from 
 │   │   ├── producer_newsapi.py
 │   │   ├── producer_bbc.py
 │   │   ├── producer_local_scrapers.py
-│   │   └── consumer_to_duckdb.py
+│   │   ├── producer_rss.py
+│   │   ├── consumer_to_duckdb.py
+│   │   └── consumer_to_clickhouse.py
 │   ├── process.py
 │   └── build_warehouse.py
 ├── infra/                     # local infra (docker compose)
-│   └── docker-compose.yml     # Kafka + Zookeeper broker
-├── scripts/                   # one-off CLI helpers
+│   └── docker-compose.yml     # Kafka + Zookeeper broker + ClickHouse server
+├── scripts/                   # CLI helpers
+│   └── dev_stack.sh           # one-command local dev loop (broker + consumer + producer + dashboard)
 ├── tests/                     # pytest
 ├── data/                      # extracts + configs (large files via shared drive)
 │   ├── raw/                   # untouched extracts
@@ -151,6 +159,8 @@ dlt resolves `.dlt/secrets.toml` and configs from cwd, so all commands run from 
 │       ├── 00-context.md
 │       ├── 01-ea-hierarchy.md
 │       ├── 02-viewpoints.md
+│       ├── 03-system-design-diagrams.md
+│       ├── 05-scraping-pattern.md
 │       ├── 06-code-layout.md
 │       └── adr/               # Architecture Decision Records
 ├── .dlt/                      # dlt workspace (secrets.toml gitignored)

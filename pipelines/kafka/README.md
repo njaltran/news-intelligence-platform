@@ -1,6 +1,6 @@
 # pipelines/kafka/
 
-Streaming ingestion path. Producers fetch news (NewsAPI + scraping), publish standardised messages to a single Kafka topic, a dlt consumer drains the topic into DuckDB.
+Streaming ingestion path. Producers fetch news (NewsAPI, BBC, RSS + Google News, native-language scrapers), publish standardised messages to a single Kafka topic, a dlt consumer drains the topic into ClickHouse (or DuckDB for local debugging).
 
 Owned by Nadi. Originally prototyped in [`nadikyaw/Enterprise_Architecture_BigData`](https://github.com/nadikyaw/Enterprise_Architecture_BigData), merged here on 2026-05-25.
 
@@ -64,6 +64,13 @@ uv run python pipelines/kafka/producer_bbc.py
 uv run python pipelines/kafka/producer_local_scrapers.py
 ```
 
+For the typical local dev loop (broker + ClickHouse + Streamlit dashboard + consumer + RSS producer in one terminal, merged log tail) use the helper script instead:
+
+```bash
+./scripts/dev_stack.sh           # bring everything up
+./scripts/dev_stack.sh --down    # stop docker stack
+```
+
 Verify a clickhouse load:
 
 ```bash
@@ -76,6 +83,14 @@ Tear down:
 ```bash
 docker compose -f infra/docker-compose.yml down
 ```
+
+## Streaming cadence
+
+The point of the Kappa path is that the dashboard sees rows trickle in, not arrive in one big burst.
+
+- `producer_rss.py` is single-shot by default. Set `PRODUCER_INTERVAL_S=300` (or any positive value) to loop the sweep on that interval. Set `PRODUCER_MSG_DELAY_MS` to space individual messages out across a sweep instead of bursting.
+- `consumer_to_clickhouse.py` consumes in micro-batches so dlt loads land incrementally. Tunables: `CONSUMER_BATCH_MAX` (default 500), `CONSUMER_BATCH_FLUSH_S` (default 5), `CONSUMER_IDLE_TIMEOUT_S` (default 15, `0` = run forever).
+- Per-feed structured logging from the producer (`pipelines/kafka/_log.py`) lets `dev_stack.sh` interleave RSS, Google News, and producer lines into one merged view.
 
 ## Known limitations (from initial run, 2026-05-06)
 
