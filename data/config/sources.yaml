@@ -1,7 +1,7 @@
 # News outlet sources per country.
 #
 # Owned by Karina (curation) and Jack (scrapability assessment).
-# Used by rest_api_pipeline.py (RSS resources) and scrapers.
+# Used by sources/rss.py (RSS resources) and sources/scrapers/* (HTML scrapes).
 #
 # Fields:
 #   name        human-friendly outlet name
@@ -21,40 +21,46 @@ countries:
       scrape: rss
       robots_ok: unknown
       notes: ""
-    # add Tagesschau, Zeit, Süddeutsche, FAZ
+    - name: Tagesschau
+      url: https://www.tagesschau.de
+      rss: https://www.tagesschau.de/xml/rss2/
+      language: de
+      scrape: rss
+      robots_ok: unknown
+      notes: ""
 
   US:
-    - name: TODO
-      url: ""
-      rss: ""
+    - name: NYT World
+      url: https://www.nytimes.com/section/world
+      rss: https://rss.nytimes.com/services/xml/rss/nyt/World.xml
       language: en
       scrape: rss
       robots_ok: unknown
-      notes: "Karina to populate"
+      notes: "Section feed (World). Full text behind paywall, summary only in RSS."
 
   IT:
-    - name: TODO
-      url: ""
-      rss: ""
+    - name: ANSA
+      url: https://www.ansa.it
+      rss: https://www.ansa.it/sito/ansait_rss.xml
       language: it
       scrape: rss
       robots_ok: unknown
-      notes: "Karina to populate"
+      notes: ""
 
   MM:
-    - name: TODO
-      url: ""
-      rss: ""
-      language: my
-      scrape: beautifulsoup
+    - name: Myanmar Now (EN)
+      url: https://myanmar-now.org
+      rss: https://myanmar-now.org/en/feed
+      language: en
+      scrape: rss
       robots_ok: unknown
-      notes: "Burmese script. Encoding gotchas. Jack to assess scrapability."
+      notes: "English edition. Burmese-language site needs separate scrape. Irrawaddy and Frontier Myanmar block bot UAs (403)."
 
   KZ:
-    - name: TODO
-      url: ""
-      rss: ""
-      language: kk
-      scrape: beautifulsoup
+    - name: Astana Times
+      url: https://astanatimes.com
+      rss: https://astanatimes.com/feed/
+      language: en
+      scrape: rss
       robots_ok: unknown
-      notes: "Kazakh and Russian content mixed. Jack to assess scrapability."
+      notes: "English-language outlet. Tengri News RSS returns 404. Kazakh/Russian-language outlets still need scrape coverage."

@@ -76,14 +76,15 @@ uv pip install -r requirements.txt
 # configure dlt secrets
 # edit .dlt/secrets.toml with NewsAPI key, GDELT credentials, ClickHouse password
 
-# run ingestion
-uv run python pipelines/ingest_apis.py
+# run ingestion (PYTHONPATH=. so pipelines/ can import sources/)
+PYTHONPATH=. uv run python pipelines/ingest_apis.py
+PYTHONPATH=. uv run python pipelines/ingest_rss.py
 
 # launch dashboard
 uv run marimo edit dashboard/app.py
 ```
 
-dlt resolves `.dlt/secrets.toml` and configs from cwd, so all commands run from the repo root.
+dlt resolves `.dlt/secrets.toml` and configs from cwd, so all commands run from the repo root. `PYTHONPATH=.` is needed because `pipelines/*.py` import from the sibling `sources/` package and Python only auto-adds the script's own directory to `sys.path`.
 
 ## Repository layout
 
