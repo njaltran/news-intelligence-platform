@@ -12,11 +12,16 @@
 # Format:
 #   countries:
 #     <ISO>:
-#       lang: <BCP-47 lang>
+#       lang: <BCP-47 lang>            # primary UI language
 #       gl: <country code>
-#       ceid: <country:lang>
+#       ceid: <country:lang>           # used only when langs is absent
+#       langs: [<lang>, ...]           # optional fan-out across UI langs
 #       topics: list of Google News section topics
 #       queries: list of free-text search queries
+#
+# Each query is also fanned out across `when:` windows in code (see
+# SEARCH_WINDOWS in sources/gnews.py), since each Google News RSS feed
+# hard-caps at ~100 entries. URL dedup absorbs overlap.
 
 countries:
   DE:
@@ -288,6 +293,12 @@ countries:
     lang: my
     gl: MM
     ceid: MM:my
+    # Burmese UI plus English UI: queries mix scripts, and English
+    # widens the diaspora/international outlets that index Myanmar
+    # news under the [[Long Tail]].
+    langs:
+      - my
+      - en
     topics:
       - WORLD
       - NATION
@@ -352,6 +363,13 @@ countries:
     lang: ru
     gl: KZ
     ceid: KZ:ru
+    # Russian, Kazakh, and English UIs. Each is its own 100-cap feed
+    # per query x window, so multi-lang multiplies the [[Variety]] and
+    # surfaces Kazakh-script outlets that the ru CEID under-ranks.
+    langs:
+      - ru
+      - kk
+      - en
     topics:
       - WORLD
       - NATION

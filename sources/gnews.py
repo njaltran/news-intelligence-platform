@@ -2,9 +2,10 @@
 per-outlet feeds in sources/rss.py.
 
 Each (country, topic|query) pair from data/config/gnews_queries.yaml
-becomes one Google News RSS feed. Each feed returns ~100 entries, so
-the catalogue is the main lever for hitting the project's target
-article count.
+becomes a Google News RSS feed. Each feed is hard-capped at ~100
+entries server-side, so to scale we fan every search query across
+multiple `when:` time windows (and optionally multiple UI languages
+per country) -- each combo is its own 100-cap feed.
 
 EA framing. This is the [[Variety]] amplifier. Topic-sliced Google
 News surfaces Long Tail outlets the curated per-outlet list cannot
@@ -22,6 +23,7 @@ from __future__ import annotations
 
 import logging
 import os
+import random
 import time
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from pathlib import Path
@@ -51,38 +53,66 @@ TOPIC_URL = (
 )
 SEARCH_URL = "https://news.google.com/rss/search?q={q}&hl={lang}&gl={gl}&ceid={ceid}"
 
-REQUEST_DELAY_S = 0.2  # be polite to Google News
+# Google News RSS hard-caps each feed at ~100 entries. To break the cap
+# we fan each query out across `when:` time windows. An empty string
+# means "no when: suffix" (Google's default relevance window). Each
+# window is its own 100-cap feed; URL dedup in the dlt merge disposition
+# absorbs overlap. Override via GNEWS_WINDOWS (comma-separated, "" = no
+# operator). Order matters only for log readability.
+SEARCH_WINDOWS: tuple[str, ...] = tuple(
+    w.strip() for w in os.environ.get("GNEWS_WINDOWS", ",1h,1d,7d").split(",")
+)
 
 
 def _load_query_catalogue() -> list[dict[str, str]]:
-    """Flatten gnews_queries.yaml to one entry per Google News feed."""
+    """Flatten gnews_queries.yaml to one entry per Google News feed.
+
+    For each country, optional `langs:` list fans search + topic feeds
+    across multiple UI languages (e.g. KZ in ru + kk). Default is the
+    single `lang:` value. Each search query then fans out across
+    SEARCH_WINDOWS to bypass the per-feed 100-entry cap.
+    """
     with GNEWS_YAML.open() as fh:
         config = yaml.safe_load(fh)
     feeds: list[dict[str, str]] = []
     for country_code, spec in (config.get("countries") or {}).items():
-        lang = spec.get("lang", "en")
+        default_lang = spec.get("lang", "en")
         gl = spec.get("gl", country_code)
-        ceid = spec.get("ceid", f"{gl}:{lang}")
-        for topic in spec.get("topics") or []:
-            feeds.append(
-                {
-                    "country_target": country_code,
-                    "source": f"Google News {country_code} / {topic}",
-                    "rss": TOPIC_URL.format(topic=topic, lang=lang, gl=gl, ceid=ceid),
-                    "language": lang,
-                }
-            )
-        for query in spec.get("queries") or []:
-            feeds.append(
-                {
-                    "country_target": country_code,
-                    "source": f"Google News {country_code} / q:{query}",
-                    "rss": SEARCH_URL.format(
-                        q=quote_plus(query), lang=lang, gl=gl, ceid=ceid
-                    ),
-                    "language": lang,
-                }
-            )
+        langs = spec.get("langs") or [default_lang]
+        for lang in langs:
+            # ceid: per-lang derived unless single-lang and explicit.
+            if len(langs) == 1 and spec.get("ceid"):
+                ceid = spec["ceid"]
+            else:
+                ceid = f"{gl}:{lang}"
+            for topic in spec.get("topics") or []:
+                feeds.append(
+                    {
+                        "country_target": country_code,
+                        "source": f"Google News {country_code}/{lang} / {topic}",
+                        "rss": TOPIC_URL.format(
+                            topic=topic, lang=lang, gl=gl, ceid=ceid
+                        ),
+                        "language": lang,
+                    }
+                )
+            for query in spec.get("queries") or []:
+                for window in SEARCH_WINDOWS:
+                    q_text = f"{query} when:{window}" if window else query
+                    win_tag = window or "all"
+                    feeds.append(
+                        {
+                            "country_target": country_code,
+                            "source": (
+                                f"Google News {country_code}/{lang} "
+                                f"/ q:{query} ({win_tag})"
+                            ),
+                            "rss": SEARCH_URL.format(
+                                q=quote_plus(q_text), lang=lang, gl=gl, ceid=ceid
+                            ),
+                            "language": lang,
+                        }
+                    )
     return feeds
 
 
@@ -106,9 +136,41 @@ def _summary(entry: feedparser.FeedParserDict) -> str | None:
     return None
 
 
+MAX_RETRIES = int(os.environ.get("GNEWS_MAX_RETRIES", "5"))
+BACKOFF_BASE_S = float(os.environ.get("GNEWS_BACKOFF_BASE_S", "1.0"))
+BACKOFF_CAP_S = float(os.environ.get("GNEWS_BACKOFF_CAP_S", "60.0"))
+
+
 def _fetch(feed: dict[str, str]):
-    """feedparser.parse with the bot UA. Runs in a worker thread."""
-    return feedparser.parse(feed["rss"], agent=USER_AGENT)
+    """feedparser.parse with the bot UA, exponential backoff on 429.
+
+    feedparser swallows HTTP errors and surfaces the status code on
+    `parsed.status`. On 429 (Google throttling) we sleep base*2^attempt
+    + jitter, capped at BACKOFF_CAP_S, up to GNEWS_MAX_RETRIES retries.
+    Other errors fall through to the caller's try/except.
+    """
+    for attempt in range(MAX_RETRIES + 1):
+        parsed = feedparser.parse(feed["rss"], agent=USER_AGENT)
+        if getattr(parsed, "status", None) != 429:
+            return parsed
+        if attempt == MAX_RETRIES:
+            _log.warning(
+                "gnews: %s -> 429 after %d retries, giving up",
+                feed["source"],
+                MAX_RETRIES,
+            )
+            return parsed
+        delay = min(BACKOFF_BASE_S * (2**attempt), BACKOFF_CAP_S)
+        delay += random.uniform(0, delay * 0.25)
+        _log.info(
+            "gnews: %s -> 429, retry %d/%d in %.1fs",
+            feed["source"],
+            attempt + 1,
+            MAX_RETRIES,
+            delay,
+        )
+        time.sleep(delay)
+    return parsed
 
 
 def iter_gnews_articles() -> Iterator[dict[str, Any]]:
