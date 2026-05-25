@@ -152,17 +152,17 @@ The module also exposes a `news_eleven` dlt resource (`@dlt.resource(name="artic
 
 ## Data flow
 
-Per call to `mizzima_burmese()` (one per `pipeline.run()`):
+Per call to `news_eleven()` (one per `pipeline.run()`):
 
 1. `fetch(base_url)` -> homepage HTML.
-2. `parse(soup)` -> N partial rows (~62 today).
+2. `parse(soup)` -> N partial rows (currently ~39 per homepage scrape, capped at `MAX_HOMEPAGE_LINKS = 100`).
 3. For each row's `url`:
    - `fetch_article(url)` GETs the article, sleeps `request_delay_s`, calls `parse_article`.
    - Returns `{"summary": ...}` on success, `{}` on network or parse failure.
 4. `run()` merges and yields the row with the unified schema.
 5. dlt resource (`@dlt.resource(name="articles", primary_key="url", write_disposition="merge")`) lands rows into `scrapers_raw.articles` in DuckDB, replacing prior rows that share the same `url`.
 
-Total HTTP requests per run: 1 homepage + ~62 articles = ~63. At 1 req/s, ~1 minute. Within any sensible politeness budget.
+Total HTTP requests per run: 1 homepage + N articles. At 1 req/s, roughly 40 seconds with the current News Eleven homepage size. Within any sensible politeness budget.
 
 ## Error handling
 
@@ -179,13 +179,13 @@ Total HTTP requests per run: 1 homepage + ~62 articles = ~63. At 1 req/s, ~1 min
 
 ## Logging
 
-One stdout line per article fetch:
+One stdout line per article fetch (optional, not strictly required for Phase 1):
 
 ```
-[mizzima_burmese] article 12/62 ok https://www.mizzimaburmese.com/...
+[news_eleven] article 12/39 ok https://news-eleven.com/article/...
 ```
 
-Matches the print-based style already in use in `_base.py` and `mizzima_burmese.py`. Switching to structured logging (`pipelines/kafka/_log.py`) is a Phase 2 nicety.
+Matches the print-based style already in use elsewhere in `sources/scrapers/`. Switching to structured logging (`pipelines/kafka/_log.py`) is a Phase 2 nicety.
 
 ## Testing
 
