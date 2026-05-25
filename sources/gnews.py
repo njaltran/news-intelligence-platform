@@ -1,0 +1,161 @@
+"""Google News RSS source. Acts as a force multiplier on top of the
+per-outlet feeds in sources/rss.py.
+
+Each (country, topic|query) pair from data/config/gnews_queries.yaml
+becomes one Google News RSS feed. Each feed returns ~100 entries, so
+the catalogue is the main lever for hitting the project's target
+article count.
+
+EA framing. This is the [[Variety]] amplifier. Topic-sliced Google
+News surfaces Long Tail outlets the curated per-outlet list cannot
+realistically enumerate, while still anchoring on country and
+language. Velocity is bounded by Google News update cadence (low) so
+periodic polling is sufficient. No Kafka.
+
+Schema matches sources/rss.py: source, country_target, title,
+summary, url, published_at, extracted_at. Same dlt resource name
+(`articles`) so it lands in the same table as the curated RSS pull
+and dedups on URL via merge disposition.
+"""
+
+from __future__ import annotations
+
+import logging
+import time
+from pathlib import Path
+from typing import Any, Iterator
+from urllib.parse import quote_plus
+
+import dlt
+import feedparser
+import yaml
+from dlt.common.pendulum import pendulum
+
+logger = logging.getLogger(__name__)
+
+USER_AGENT = "Mozilla/5.0 (compatible; NewsIntelBot/0.1)"
+
+GNEWS_YAML = (
+    Path(__file__).resolve().parents[1] / "data" / "config" / "gnews_queries.yaml"
+)
+
+TOPIC_URL = (
+    "https://news.google.com/rss/headlines/section/topic/{topic}"
+    "?hl={lang}&gl={gl}&ceid={ceid}"
+)
+SEARCH_URL = "https://news.google.com/rss/search?q={q}&hl={lang}&gl={gl}&ceid={ceid}"
+
+REQUEST_DELAY_S = 0.2  # be polite to Google News
+
+
+def _load_query_catalogue() -> list[dict[str, str]]:
+    """Flatten gnews_queries.yaml to one entry per Google News feed."""
+    with GNEWS_YAML.open(encoding="utf-8") as fh:
+        config = yaml.safe_load(fh)
+    feeds: list[dict[str, str]] = []
+    for country_code, spec in (config.get("countries") or {}).items():
+        lang = spec.get("lang", "en")
+        gl = spec.get("gl", country_code)
+        ceid = spec.get("ceid", f"{gl}:{lang}")
+        for topic in spec.get("topics") or []:
+            feeds.append(
+                {
+                    "country_target": country_code,
+                    "source": f"Google News {country_code} / {topic}",
+                    "rss": TOPIC_URL.format(topic=topic, lang=lang, gl=gl, ceid=ceid),
+                    "language": lang,
+                }
+            )
+        for query in spec.get("queries") or []:
+            feeds.append(
+                {
+                    "country_target": country_code,
+                    "source": f"Google News {country_code} / q:{query}",
+                    "rss": SEARCH_URL.format(
+                        q=quote_plus(query), lang=lang, gl=gl, ceid=ceid
+                    ),
+                    "language": lang,
+                }
+            )
+    return feeds
+
+
+def _parse_published(entry: feedparser.FeedParserDict) -> str | None:
+    """Map RSS published/updated to ISO8601 UTC. None if unparseable."""
+    for key in ("published_parsed", "updated_parsed"):
+        val = entry.get(key)
+        if val:
+            return pendulum.from_timestamp(
+                pendulum.datetime(*val[:6]).timestamp(), tz="UTC"
+            ).to_iso8601_string()
+    return None
+
+
+def _summary(entry: feedparser.FeedParserDict) -> str | None:
+    """First non-empty summary-ish field. HTML cleaning is downstream."""
+    for key in ("summary", "description"):
+        val = entry.get(key)
+        if val:
+            return val
+    return None
+
+
+def iter_gnews_articles() -> Iterator[dict[str, Any]]:
+    """One row per Google News RSS entry across the query catalogue.
+    A single failing feed does not abort the run. Plain generator so
+    the combined pipeline can chain it with the per-outlet iterator
+    into one dlt resource."""
+    extracted_at = pendulum.now("UTC").to_iso8601_string()
+    feeds = _load_query_catalogue()
+    failures: list[tuple[str, str, str]] = []
+    for feed in feeds:
+        try:
+            parsed = feedparser.parse(feed["rss"], agent=USER_AGENT)
+        except Exception as exc:
+            logger.warning(
+                "Google News feed fetch failed: %s (%s): %s",
+                feed["source"], feed["rss"], exc,
+            )
+            failures.append((feed["source"], feed["rss"], repr(exc)))
+            time.sleep(REQUEST_DELAY_S)
+            continue
+        if parsed.bozo and not parsed.entries:
+            err = getattr(parsed, "bozo_exception", "no entries")
+            logger.warning(
+                "Google News feed empty/malformed: %s (%s): %s",
+                feed["source"], feed["rss"], err,
+            )
+            failures.append((feed["source"], feed["rss"], str(err)))
+            time.sleep(REQUEST_DELAY_S)
+            continue
+        for entry in parsed.entries:
+            url = entry.get("link")
+            if not url:
+                continue
+            yield {
+                "source": feed["source"],
+                "country_target": feed["country_target"],
+                "title": entry.get("title"),
+                "summary": _summary(entry),
+                "url": url,
+                "published_at": _parse_published(entry),
+                "extracted_at": extracted_at,
+            }
+        time.sleep(REQUEST_DELAY_S)
+    if failures:
+        logger.warning(
+            "Google News run: %d/%d feeds failed or empty",
+            len(failures), len(feeds),
+        )
+
+
+@dlt.resource(name="articles", primary_key="url", write_disposition="merge")
+def gnews_articles() -> Iterator[dict[str, Any]]:
+    """dlt resource wrapper. Used when this source is run standalone."""
+    yield from iter_gnews_articles()
+
+
+@dlt.source(name="gnews")
+def gnews_source() -> Any:
+    """Google News RSS source. See sources/rss.py for the per-outlet variant."""
+    yield gnews_articles()
