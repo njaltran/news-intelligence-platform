@@ -24,6 +24,8 @@ Sources (NewsAPI, GDELT, RSS, scraping)
 
 **Storage split.** DuckDB is the local raw lake: cheap, embedded, dev-friendly. ClickHouse is the analytical warehouse: columnar with MPP execution, sized for sub-second aggregations over the modelled tables (country x topic x time) that back the dashboard.
 
+**Streaming path.** Producers (NewsAPI, BBC, native-language scrapers) publish standardised articles to a single Kafka topic. A dlt consumer drains the topic into DuckDB with schema inference. This is the **Kappa** arm; the batch RSS / GDELT arm is the Lambda complement for outlets that only expose batch interfaces. See [`pipelines/kafka/`](pipelines/kafka/) and [`infra/docker-compose.yml`](infra/docker-compose.yml).
+
 ## Stack
 
 | Layer | Tool | Why |
@@ -80,6 +82,11 @@ uv pip install -r requirements.txt
 PYTHONPATH=. uv run python pipelines/ingest_apis.py
 PYTHONPATH=. uv run python pipelines/ingest_rss.py
 
+# streaming path (separate terminals; see pipelines/kafka/README.md)
+docker compose -f infra/docker-compose.yml up -d
+PYTHONPATH=. uv run python pipelines/kafka/consumer_to_duckdb.py
+PYTHONPATH=. uv run python pipelines/kafka/producer_newsapi.py
+
 # launch dashboard
 uv run marimo edit dashboard/app.py
 ```
@@ -113,8 +120,15 @@ dlt resolves `.dlt/secrets.toml` and configs from cwd, so all commands run from 
 │   ├── ingest_apis.py
 │   ├── ingest_rss.py
 │   ├── ingest_scrapers.py
+│   ├── kafka/                 # streaming arm: Kappa path
+│   │   ├── producer_newsapi.py
+│   │   ├── producer_bbc.py
+│   │   ├── producer_local_scrapers.py
+│   │   └── consumer_to_duckdb.py
 │   ├── process.py
 │   └── build_warehouse.py
+├── infra/                     # local infra (docker compose)
+│   └── docker-compose.yml     # Kafka + Zookeeper broker
 ├── scripts/                   # one-off CLI helpers
 ├── tests/                     # pytest
 ├── data/                      # extracts + configs (large files via shared drive)

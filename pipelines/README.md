@@ -9,9 +9,14 @@ Owned by Nadi.
 ```
 pipelines/
 ├── __init__.py
-├── ingest_apis.py        # NewsAPI + GDELT  -> DuckDB raw lake
-├── ingest_rss.py         # RSS feeds         -> DuckDB raw lake
-├── ingest_scrapers.py    # MM + KZ scrapers  -> DuckDB raw lake
+├── ingest_apis.py        # NewsAPI + GDELT   -> DuckDB raw lake   (batch / Lambda arm)
+├── ingest_rss.py         # RSS feeds         -> DuckDB raw lake   (batch / Lambda arm)
+├── ingest_scrapers.py    # MM + KZ scrapers  -> DuckDB raw lake   (batch / Lambda arm)
+├── kafka/                # streaming arm (Kappa path), see kafka/README.md
+│   ├── producer_newsapi.py
+│   ├── producer_bbc.py
+│   ├── producer_local_scrapers.py
+│   └── consumer_to_duckdb.py
 ├── process.py            # clean + embeddings + topics + divergence
 └── build_warehouse.py    # model raw tables -> ClickHouse
 ```
