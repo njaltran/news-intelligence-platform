@@ -10,6 +10,11 @@ delivery: instead of writing one duckdb snapshot, every article lands
 as a message on Kafka topic `unified_news_topic`. The consumer
 (consumer_to_clickhouse.py) drains it to ClickHouse via dlt.
 
+Single-shot by default. Set PRODUCER_INTERVAL_S=300 (or any positive
+value in seconds) to keep polling all feeds on that interval. Useful
+when you want the dashboard to keep refreshing with newly-published
+articles instead of stopping after the first sweep.
+
 Message schema matches the project canon (source, country_target,
 title, summary, url, published_at, extracted_at) so the consumer
 sees a uniform stream regardless of upstream feed.
@@ -23,6 +28,7 @@ Run from the repo root after bringing the broker up:
 from __future__ import annotations
 
 import json
+import os
 import socket
 import time
 from collections import Counter
@@ -36,6 +42,7 @@ from sources.rss import iter_rss_articles
 TOPIC = "unified_news_topic"
 BOOTSTRAP_SERVERS = "localhost:9092"
 PROGRESS_EVERY = 500
+INTERVAL_S = int(os.environ.get("PRODUCER_INTERVAL_S", "0"))
 
 log = get_logger("producer")
 # Hook the source loggers into the same handler so feed-level lines
@@ -52,22 +59,9 @@ def _delivery_report(err, _msg) -> None:
         log.error("delivery failed: %s", err)
 
 
-def run() -> None:
-    producer = Producer(
-        {
-            "bootstrap.servers": BOOTSTRAP_SERVERS,
-            "client.id": "rss-producer",
-            "socket.timeout.ms": 10000,
-            "queue.buffering.max.messages": 200000,
-            "linger.ms": 50,
-            "compression.type": "lz4",
-        }
-    )
-
-    log.info("producing to topic=%s bootstrap=%s", TOPIC, BOOTSTRAP_SERVERS)
+def _one_sweep(producer: Producer) -> int:
     by_country: Counter[str] = Counter()
     started = time.monotonic()
-
     count = 0
     for article in _chained_articles():
         producer.produce(
@@ -90,12 +84,50 @@ def run() -> None:
     producer.flush()
     elapsed = time.monotonic() - started
     log.info(
-        "done. produced=%d elapsed=%.1fs rate=%.0f msg/s by_country=%s",
+        "sweep done. produced=%d elapsed=%.1fs rate=%.0f msg/s by_country=%s",
         count,
         elapsed,
         count / max(elapsed, 1e-3),
         dict(by_country),
     )
+    return count
+
+
+def run() -> None:
+    producer = Producer(
+        {
+            "bootstrap.servers": BOOTSTRAP_SERVERS,
+            "client.id": "rss-producer",
+            "socket.timeout.ms": 10000,
+            "queue.buffering.max.messages": 200000,
+            "linger.ms": 50,
+            "compression.type": "lz4",
+        }
+    )
+
+    log.info(
+        "producing to topic=%s bootstrap=%s interval_s=%d (0 = single-shot)",
+        TOPIC,
+        BOOTSTRAP_SERVERS,
+        INTERVAL_S,
+    )
+
+    sweep = 0
+    total = 0
+    while True:
+        sweep += 1
+        log.info("starting sweep %d", sweep)
+        total += _one_sweep(producer)
+        if INTERVAL_S <= 0:
+            log.info("done. total_produced=%d sweeps=%d", total, sweep)
+            return
+        log.info(
+            "sweep %d complete. total=%d. sleeping %ds before next sweep.",
+            sweep,
+            total,
+            INTERVAL_S,
+        )
+        time.sleep(INTERVAL_S)
 
 
 def _chained_articles():

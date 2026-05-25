@@ -73,7 +73,10 @@ CONSUMER_IDLE_TIMEOUT_S=0 CONSUMER_BATCH_FLUSH_S=2 \
   >"$CONSUMER_LOG" 2>&1 &
 bg_pids+=($!)
 
-PYTHONPATH=. uv run python pipelines/kafka/producer_rss.py \
+# Producer loops on this interval by default so the dashboard keeps
+# seeing fresh items. Override with PRODUCER_INTERVAL_S=0 for one-shot.
+PRODUCER_INTERVAL_S=${PRODUCER_INTERVAL_S:-300} \
+  PYTHONPATH=. uv run python pipelines/kafka/producer_rss.py \
   >"$PRODUCER_LOG" 2>&1 &
 bg_pids+=($!)
 
