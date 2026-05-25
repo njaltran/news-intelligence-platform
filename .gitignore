@@ -1,0 +1,36 @@
+# secrets (match at any depth)
+secrets.toml
+**/secrets.toml
+*.secrets.toml
+**/*.secrets.toml
+*.env
+.env*
+
+# python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.venv/
+venv/
+
+# editors / OS
+.DS_Store
+.idea/
+.vscode/
+
+# marimo
+__marimo__/
+*.marimo.lock
+
+# data (rebuildable from pipeline)
+*.duckdb
+*.duckdb.wal
+
+# Claude config (personal, not team-facing)
+CLAUDE.md
+.claude/
+.mcp.json
+.claudeignore
+
+# caveman backups
+*.original.md
