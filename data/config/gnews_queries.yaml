@@ -1,0 +1,437 @@
+# Google News RSS query catalogue. Acts as a force multiplier on top
+# of the per-outlet feeds in sources.yaml.
+#
+# Each (country, topic|query) pair becomes one Google News RSS feed
+# that returns ~100 items. Deduplication is by URL in the dlt merge
+# disposition, so overlapping queries are safe.
+#
+# EA framing. This file is the [[Variety]] amplifier. Topic-sliced
+# Google News surfaces outlets the per-outlet list will never cover
+# (the Long Tail), while still anchoring on country and language.
+#
+# Format:
+#   countries:
+#     <ISO>:
+#       lang: <BCP-47 lang>
+#       gl: <country code>
+#       ceid: <country:lang>
+#       topics: list of Google News section topics
+#       queries: list of free-text search queries
+
+countries:
+  DE:
+    lang: de
+    gl: DE
+    ceid: DE:de
+    topics:
+      - WORLD
+      - NATION
+      - BUSINESS
+      - TECHNOLOGY
+      - ENTERTAINMENT
+      - SPORTS
+      - SCIENCE
+      - HEALTH
+    queries:
+      - Deutschland
+      - Bundesregierung
+      - Bundestag
+      - Bundesrat
+      - Wirtschaft
+      - Inflation
+      - Klimawandel
+      - Klimaschutz
+      - Ukraine
+      - Russland
+      - Migration
+      - Energie
+      - Energiewende
+      - Verteidigung
+      - Bundeswehr
+      - NATO
+      - Gesundheit
+      - Bildung
+      - Schule
+      - Kultur
+      - Wahlen
+      - Bundestagswahl
+      - Pandemie
+      - EU
+      - Europa
+      - Berlin
+      - München
+      - Hamburg
+      - Köln
+      - Frankfurt
+      - Stuttgart
+      - Düsseldorf
+      - Sachsen
+      - Bayern
+      - SPD
+      - CDU
+      - Grüne
+      - AfD
+      - FDP
+      - Linke
+      - Scholz
+      - Merz
+      - Habeck
+      - Lindner
+      - Fußball
+      - Bundesliga
+      - DFB
+      - Auto
+      - Volkswagen
+      - BMW
+      - Siemens
+      - Deutsche Bank
+      - DAX
+      - Börse
+      - Steuern
+      - Rente
+      - Arbeitsmarkt
+      - Wohnungsmarkt
+      - Verkehr
+      - Bahn
+      - Polizei
+      - Justiz
+      - Verfassungsgericht
+      - Israel
+      - Gaza
+      - Iran
+      - China
+      - USA
+      - Frankreich
+      - Türkei
+      - Polen
+      - Skandal
+      - Demonstration
+      - Streik
+      - KI
+      - Digitalisierung
+
+  US:
+    lang: en
+    gl: US
+    ceid: US:en
+    topics:
+      - WORLD
+      - NATION
+      - BUSINESS
+      - TECHNOLOGY
+      - ENTERTAINMENT
+      - SPORTS
+      - SCIENCE
+      - HEALTH
+    queries:
+      - "United States"
+      - "White House"
+      - Congress
+      - Senate
+      - "House of Representatives"
+      - economy
+      - inflation
+      - "Federal Reserve"
+      - "climate change"
+      - Ukraine
+      - China
+      - Russia
+      - immigration
+      - healthcare
+      - Medicare
+      - Medicaid
+      - "Supreme Court"
+      - elections
+      - "election 2026"
+      - technology
+      - "artificial intelligence"
+      - Iran
+      - "Middle East"
+      - Israel
+      - Gaza
+      - Hamas
+      - California
+      - "New York"
+      - Texas
+      - Florida
+      - Chicago
+      - "Los Angeles"
+      - Pentagon
+      - FBI
+      - CIA
+      - NSA
+      - Republicans
+      - Democrats
+      - Trump
+      - Biden
+      - Harris
+      - DeSantis
+      - Newsom
+      - Wall Street
+      - Nasdaq
+      - "Dow Jones"
+      - Apple
+      - Google
+      - Microsoft
+      - Amazon
+      - Tesla
+      - Meta
+      - OpenAI
+      - NFL
+      - NBA
+      - MLB
+      - NHL
+      - "college football"
+      - hurricane
+      - wildfire
+      - shooting
+      - protest
+      - strike
+      - police
+      - migrant
+      - border
+      - crypto
+      - bitcoin
+      - layoffs
+      - housing
+      - gas prices
+      - student loans
+
+  IT:
+    lang: it
+    gl: IT
+    ceid: IT:it
+    topics:
+      - WORLD
+      - NATION
+      - BUSINESS
+      - TECHNOLOGY
+      - ENTERTAINMENT
+      - SPORTS
+      - SCIENCE
+      - HEALTH
+    queries:
+      - Italia
+      - Governo
+      - Meloni
+      - Salvini
+      - Tajani
+      - Schlein
+      - Conte
+      - Parlamento
+      - Senato
+      - Camera
+      - Quirinale
+      - Mattarella
+      - economia
+      - inflazione
+      - PNRR
+      - Ucraina
+      - Russia
+      - Putin
+      - Zelensky
+      - migrazione
+      - migranti
+      - barconi
+      - sanità
+      - ospedali
+      - elezioni
+      - referendum
+      - Europa
+      - UE
+      - NATO
+      - Roma
+      - Milano
+      - Napoli
+      - Torino
+      - Bologna
+      - Firenze
+      - Palermo
+      - Genova
+      - Sicilia
+      - Lombardia
+      - Lazio
+      - clima
+      - alluvione
+      - terremoto
+      - cultura
+      - sport
+      - calcio
+      - "Serie A"
+      - Juventus
+      - Inter
+      - Milan
+      - Roma calcio
+      - Napoli calcio
+      - Nazionale
+      - Vaticano
+      - Papa
+      - giustizia
+      - Cassazione
+      - mafia
+      - corruzione
+      - Israele
+      - Gaza
+      - Iran
+      - Cina
+      - Francia
+      - Germania
+      - Stati Uniti
+      - Trump
+      - "intelligenza artificiale"
+      - tecnologia
+      - lavoro
+      - sciopero
+      - manifestazione
+
+  MM:
+    lang: my
+    gl: MM
+    ceid: MM:my
+    topics:
+      - WORLD
+      - NATION
+      - BUSINESS
+      - TECHNOLOGY
+      - SPORTS
+      - SCIENCE
+      - HEALTH
+    queries:
+      - မြန်မာ
+      - စစ်ကောင်စီ
+      - ရန်ကုန်
+      - မန္တလေး
+      - နေပြည်တော်
+      - ရခိုင်
+      - ကရင်
+      - ရှမ်း
+      - ကချင်
+      - "Myanmar"
+      - "Burma"
+      - "Burma military"
+      - "Aung San Suu Kyi"
+      - "Myanmar junta"
+      - "Min Aung Hlaing"
+      - "Tatmadaw"
+      - "PDF Myanmar"
+      - "NUG Myanmar"
+      - "National Unity Government"
+      - "Myanmar economy"
+      - "Myanmar kyat"
+      - "Rakhine"
+      - "Rohingya"
+      - "Karen state"
+      - "Shan state"
+      - "Kachin"
+      - "Chin state"
+      - "Sagaing"
+      - "Yangon"
+      - "Mandalay"
+      - "Naypyidaw"
+      - "Myanmar protest"
+      - "Myanmar coup"
+      - "Myanmar election"
+      - "Myanmar airstrike"
+      - "Myanmar refugee"
+      - "Myanmar earthquake"
+      - "Myanmar floods"
+      - "ASEAN Myanmar"
+      - "Thailand Myanmar"
+      - "China Myanmar"
+      - "India Myanmar"
+      - "US Myanmar sanctions"
+      - "Myanmar opposition"
+      - "Karenni"
+      - "Arakan Army"
+      - "KIA Kachin"
+      - "Three Brotherhood Alliance"
+      - "Operation 1027"
+      - "Myanmar civil war"
+
+  KZ:
+    lang: ru
+    gl: KZ
+    ceid: KZ:ru
+    topics:
+      - WORLD
+      - NATION
+      - BUSINESS
+      - TECHNOLOGY
+      - ENTERTAINMENT
+      - SPORTS
+      - SCIENCE
+      - HEALTH
+    queries:
+      - Казахстан
+      - Токаев
+      - Астана
+      - Алматы
+      - Шымкент
+      - Караганда
+      - Атырау
+      - Актау
+      - Павлодар
+      - Тараз
+      - Назарбаев
+      - правительство
+      - парламент
+      - Мажилис
+      - Сенат
+      - партия Аманат
+      - экономика
+      - тенге
+      - нефть
+      - газ
+      - уран
+      - КазМунайГаз
+      - Казатомпром
+      - инфляция
+      - бюджет
+      - выборы
+      - референдум
+      - Россия
+      - Путин
+      - Китай
+      - Си Цзиньпин
+      - Украина
+      - война
+      - санкции
+      - ОДКБ
+      - ЕАЭС
+      - ШОС
+      - НАТО
+      - США
+      - Байден
+      - ЕС
+      - Турция
+      - Эрдоган
+      - Узбекистан
+      - Кыргызстан
+      - Туркменистан
+      - Таджикистан
+      - Афганистан
+      - Каспий
+      - наводнение
+      - землетрясение
+      - пожар
+      - митинг
+      - протест
+      - забастовка
+      - коррупция
+      - суд
+      - арест
+      - "Қазақстан"
+      - "Токаев"
+      - "Қазақстан экономикасы"
+      - "Tokayev"
+      - "Kazakhstan economy"
+      - "Almaty"
+      - "Astana"
+      - "Kazakhstan oil"
+      - "Kazakhstan uranium"
+      - "Kazakhstan Russia"
+      - "Kazakhstan China"
+      - "Kazakhstan elections"
+      - "Kazakhstan Tokayev"
+      - "Central Asia"
+      - "Caspian Sea"

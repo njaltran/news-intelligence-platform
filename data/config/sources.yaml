@@ -8,74 +8,1040 @@
 #   url         homepage
 #   rss         RSS feed URL (if available)
 #   language    ISO 639-1 code (de, en, it, my, kk, ru)
-#   scrape      strategy: "rss" | "beautifulsoup" | "newsapi"
+#   scrape      strategy: "rss" | "beautifulsoup" | "newsapi" | "gnews"
 #   robots_ok   has robots.txt been checked? true/false/unknown
 #   notes       quirks (paywalls, JS-rendered, encoding, etc.)
+#
+# Scope. Countries fixed to DE, US, IT, MM, KZ per project goals
+# (CLAUDE.md). MM and KZ are the Long Tail differentiation.
+#
+# Section feeds are listed individually because feedparser pulls
+# entries per-feed; one section feed per resource maximises the
+# Variety V without changing the schema.
 
 countries:
   DE:
-    - name: Spiegel
+    # Spiegel section feeds. Each returns ~30-60 entries.
+    - name: Spiegel Top
       url: https://www.spiegel.de
       rss: https://www.spiegel.de/schlagzeilen/index.rss
       language: de
       scrape: rss
       robots_ok: unknown
       notes: ""
-    - name: Tagesschau
+    - name: Spiegel Politik
+      url: https://www.spiegel.de/politik
+      rss: https://www.spiegel.de/politik/index.rss
+      language: de
+      scrape: rss
+      robots_ok: unknown
+      notes: ""
+    - name: Spiegel Wirtschaft
+      url: https://www.spiegel.de/wirtschaft
+      rss: https://www.spiegel.de/wirtschaft/index.rss
+      language: de
+      scrape: rss
+      robots_ok: unknown
+      notes: ""
+    - name: Spiegel Panorama
+      url: https://www.spiegel.de/panorama
+      rss: https://www.spiegel.de/panorama/index.rss
+      language: de
+      scrape: rss
+      robots_ok: unknown
+      notes: ""
+    - name: Spiegel Sport
+      url: https://www.spiegel.de/sport
+      rss: https://www.spiegel.de/sport/index.rss
+      language: de
+      scrape: rss
+      robots_ok: unknown
+      notes: ""
+    - name: Spiegel Kultur
+      url: https://www.spiegel.de/kultur
+      rss: https://www.spiegel.de/kultur/index.rss
+      language: de
+      scrape: rss
+      robots_ok: unknown
+      notes: ""
+    - name: Spiegel Netzwelt
+      url: https://www.spiegel.de/netzwelt
+      rss: https://www.spiegel.de/netzwelt/index.rss
+      language: de
+      scrape: rss
+      robots_ok: unknown
+      notes: ""
+    - name: Spiegel Wissenschaft
+      url: https://www.spiegel.de/wissenschaft
+      rss: https://www.spiegel.de/wissenschaft/index.rss
+      language: de
+      scrape: rss
+      robots_ok: unknown
+      notes: ""
+    - name: Spiegel Gesundheit
+      url: https://www.spiegel.de/gesundheit
+      rss: https://www.spiegel.de/gesundheit/index.rss
+      language: de
+      scrape: rss
+      robots_ok: unknown
+      notes: ""
+    - name: Spiegel Auto
+      url: https://www.spiegel.de/auto
+      rss: https://www.spiegel.de/auto/index.rss
+      language: de
+      scrape: rss
+      robots_ok: unknown
+      notes: ""
+    - name: Spiegel Reise
+      url: https://www.spiegel.de/reise
+      rss: https://www.spiegel.de/reise/index.rss
+      language: de
+      scrape: rss
+      robots_ok: unknown
+      notes: ""
+    - name: Spiegel Karriere
+      url: https://www.spiegel.de/karriere
+      rss: https://www.spiegel.de/karriere/index.rss
+      language: de
+      scrape: rss
+      robots_ok: unknown
+      notes: ""
+    - name: Spiegel Geschichte
+      url: https://www.spiegel.de/geschichte
+      rss: https://www.spiegel.de/geschichte/index.rss
+      language: de
+      scrape: rss
+      robots_ok: unknown
+      notes: ""
+
+    # Tagesschau section feeds.
+    - name: Tagesschau Top
       url: https://www.tagesschau.de
       rss: https://www.tagesschau.de/xml/rss2/
       language: de
       scrape: rss
       robots_ok: unknown
       notes: ""
+    - name: Tagesschau Inland
+      url: https://www.tagesschau.de/inland
+      rss: https://www.tagesschau.de/inland/index~rss2.xml
+      language: de
+      scrape: rss
+      robots_ok: unknown
+      notes: ""
+    - name: Tagesschau Ausland
+      url: https://www.tagesschau.de/ausland
+      rss: https://www.tagesschau.de/ausland/index~rss2.xml
+      language: de
+      scrape: rss
+      robots_ok: unknown
+      notes: ""
+    - name: Tagesschau Wirtschaft
+      url: https://www.tagesschau.de/wirtschaft
+      rss: https://www.tagesschau.de/wirtschaft/index~rss2.xml
+      language: de
+      scrape: rss
+      robots_ok: unknown
+      notes: ""
+
+    # Other major German outlets.
+    - name: Zeit Online
+      url: https://www.zeit.de
+      rss: https://newsfeed.zeit.de/index
+      language: de
+      scrape: rss
+      robots_ok: unknown
+      notes: ""
+    - name: Zeit Politik
+      url: https://www.zeit.de/politik
+      rss: https://newsfeed.zeit.de/politik/index
+      language: de
+      scrape: rss
+      robots_ok: unknown
+      notes: ""
+    - name: Zeit Wirtschaft
+      url: https://www.zeit.de/wirtschaft
+      rss: https://newsfeed.zeit.de/wirtschaft/index
+      language: de
+      scrape: rss
+      robots_ok: unknown
+      notes: ""
+    - name: Zeit Gesellschaft
+      url: https://www.zeit.de/gesellschaft
+      rss: https://newsfeed.zeit.de/gesellschaft/index
+      language: de
+      scrape: rss
+      robots_ok: unknown
+      notes: ""
+    - name: Zeit Kultur
+      url: https://www.zeit.de/kultur
+      rss: https://newsfeed.zeit.de/kultur/index
+      language: de
+      scrape: rss
+      robots_ok: unknown
+      notes: ""
+    - name: Zeit Wissen
+      url: https://www.zeit.de/wissen
+      rss: https://newsfeed.zeit.de/wissen/index
+      language: de
+      scrape: rss
+      robots_ok: unknown
+      notes: ""
+    - name: Zeit Sport
+      url: https://www.zeit.de/sport
+      rss: https://newsfeed.zeit.de/sport/index
+      language: de
+      scrape: rss
+      robots_ok: unknown
+      notes: ""
+    - name: FAZ Top
+      url: https://www.faz.net
+      rss: https://www.faz.net/rss/aktuell/
+      language: de
+      scrape: rss
+      robots_ok: unknown
+      notes: ""
+    - name: FAZ Politik
+      url: https://www.faz.net/aktuell/politik
+      rss: https://www.faz.net/rss/aktuell/politik/
+      language: de
+      scrape: rss
+      robots_ok: unknown
+      notes: ""
+    - name: FAZ Wirtschaft
+      url: https://www.faz.net/aktuell/wirtschaft
+      rss: https://www.faz.net/rss/aktuell/wirtschaft/
+      language: de
+      scrape: rss
+      robots_ok: unknown
+      notes: ""
+    - name: FAZ Gesellschaft
+      url: https://www.faz.net/aktuell/gesellschaft
+      rss: https://www.faz.net/rss/aktuell/gesellschaft/
+      language: de
+      scrape: rss
+      robots_ok: unknown
+      notes: ""
+    - name: FAZ Sport
+      url: https://www.faz.net/aktuell/sport
+      rss: https://www.faz.net/rss/aktuell/sport/
+      language: de
+      scrape: rss
+      robots_ok: unknown
+      notes: ""
+    - name: FAZ Feuilleton
+      url: https://www.faz.net/aktuell/feuilleton
+      rss: https://www.faz.net/rss/aktuell/feuilleton/
+      language: de
+      scrape: rss
+      robots_ok: unknown
+      notes: ""
+    - name: Welt Top
+      url: https://www.welt.de
+      rss: https://www.welt.de/feeds/latest.rss
+      language: de
+      scrape: rss
+      robots_ok: unknown
+      notes: ""
+    - name: Welt Politik
+      url: https://www.welt.de/politik
+      rss: https://www.welt.de/feeds/section/politik.rss
+      language: de
+      scrape: rss
+      robots_ok: unknown
+      notes: ""
+    - name: Welt Wirtschaft
+      url: https://www.welt.de/wirtschaft
+      rss: https://www.welt.de/feeds/section/wirtschaft.rss
+      language: de
+      scrape: rss
+      robots_ok: unknown
+      notes: ""
+    - name: Heise Top
+      url: https://www.heise.de
+      rss: https://www.heise.de/rss/heise-atom.xml
+      language: de
+      scrape: rss
+      robots_ok: unknown
+      notes: ""
+    - name: Heise Newsticker
+      url: https://www.heise.de/newsticker
+      rss: https://www.heise.de/rss/heise.rdf
+      language: de
+      scrape: rss
+      robots_ok: unknown
+      notes: ""
+    - name: NTV Top
+      url: https://www.n-tv.de
+      rss: https://www.n-tv.de/rss
+      language: de
+      scrape: rss
+      robots_ok: unknown
+      notes: ""
+    - name: NTV Politik
+      url: https://www.n-tv.de/politik
+      rss: https://www.n-tv.de/politik/rss
+      language: de
+      scrape: rss
+      robots_ok: unknown
+      notes: ""
+    - name: NTV Wirtschaft
+      url: https://www.n-tv.de/wirtschaft
+      rss: https://www.n-tv.de/wirtschaft/rss
+      language: de
+      scrape: rss
+      robots_ok: unknown
+      notes: ""
+    - name: Deutsche Welle DE
+      url: https://www.dw.com/de
+      rss: https://rss.dw.com/rdf/rss-de-all
+      language: de
+      scrape: rss
+      robots_ok: unknown
+      notes: ""
+    - name: SZ Top
+      url: https://www.sueddeutsche.de
+      rss: https://rss.sueddeutsche.de/alles
+      language: de
+      scrape: rss
+      robots_ok: unknown
+      notes: ""
+    - name: Handelsblatt Top
+      url: https://www.handelsblatt.com
+      rss: https://www.handelsblatt.com/contentexport/feed/top-themen
+      language: de
+      scrape: rss
+      robots_ok: unknown
+      notes: ""
+    - name: Stern Top
+      url: https://www.stern.de
+      rss: https://www.stern.de/feed/standard/alle-nachrichten/
+      language: de
+      scrape: rss
+      robots_ok: unknown
+      notes: ""
+    - name: Focus Top
+      url: https://www.focus.de
+      rss: https://rss.focus.de/fol/XML/rss_folnews.xml
+      language: de
+      scrape: rss
+      robots_ok: unknown
+      notes: ""
+    - name: TAZ Top
+      url: https://taz.de
+      rss: https://taz.de/!p4608;rss/
+      language: de
+      scrape: rss
+      robots_ok: unknown
+      notes: ""
 
   US:
+    # NYT section feeds.
     - name: NYT World
       url: https://www.nytimes.com/section/world
       rss: https://rss.nytimes.com/services/xml/rss/nyt/World.xml
       language: en
       scrape: rss
       robots_ok: unknown
-      notes: "Section feed (World). Full text behind paywall, summary only in RSS."
+      notes: "Section feed. Summary only (paywall on body)."
+    - name: NYT US
+      url: https://www.nytimes.com/section/us
+      rss: https://rss.nytimes.com/services/xml/rss/nyt/US.xml
+      language: en
+      scrape: rss
+      robots_ok: unknown
+      notes: ""
+    - name: NYT Politics
+      url: https://www.nytimes.com/section/politics
+      rss: https://rss.nytimes.com/services/xml/rss/nyt/Politics.xml
+      language: en
+      scrape: rss
+      robots_ok: unknown
+      notes: ""
+    - name: NYT Business
+      url: https://www.nytimes.com/section/business
+      rss: https://rss.nytimes.com/services/xml/rss/nyt/Business.xml
+      language: en
+      scrape: rss
+      robots_ok: unknown
+      notes: ""
+    - name: NYT Technology
+      url: https://www.nytimes.com/section/technology
+      rss: https://rss.nytimes.com/services/xml/rss/nyt/Technology.xml
+      language: en
+      scrape: rss
+      robots_ok: unknown
+      notes: ""
+    - name: NYT Science
+      url: https://www.nytimes.com/section/science
+      rss: https://rss.nytimes.com/services/xml/rss/nyt/Science.xml
+      language: en
+      scrape: rss
+      robots_ok: unknown
+      notes: ""
+    - name: NYT Health
+      url: https://www.nytimes.com/section/health
+      rss: https://rss.nytimes.com/services/xml/rss/nyt/Health.xml
+      language: en
+      scrape: rss
+      robots_ok: unknown
+      notes: ""
+    - name: NYT Sports
+      url: https://www.nytimes.com/section/sports
+      rss: https://rss.nytimes.com/services/xml/rss/nyt/Sports.xml
+      language: en
+      scrape: rss
+      robots_ok: unknown
+      notes: ""
+    - name: NYT Arts
+      url: https://www.nytimes.com/section/arts
+      rss: https://rss.nytimes.com/services/xml/rss/nyt/Arts.xml
+      language: en
+      scrape: rss
+      robots_ok: unknown
+      notes: ""
+    - name: NYT Opinion
+      url: https://www.nytimes.com/section/opinion
+      rss: https://rss.nytimes.com/services/xml/rss/nyt/Opinion.xml
+      language: en
+      scrape: rss
+      robots_ok: unknown
+      notes: ""
+    - name: NYT Climate
+      url: https://www.nytimes.com/section/climate
+      rss: https://rss.nytimes.com/services/xml/rss/nyt/Climate.xml
+      language: en
+      scrape: rss
+      robots_ok: unknown
+      notes: ""
+    - name: NYT Education
+      url: https://www.nytimes.com/section/education
+      rss: https://rss.nytimes.com/services/xml/rss/nyt/Education.xml
+      language: en
+      scrape: rss
+      robots_ok: unknown
+      notes: ""
+    - name: NYT HomePage
+      url: https://www.nytimes.com
+      rss: https://rss.nytimes.com/services/xml/rss/nyt/HomePage.xml
+      language: en
+      scrape: rss
+      robots_ok: unknown
+      notes: ""
+
+    # NPR section feeds.
+    - name: NPR News
+      url: https://www.npr.org
+      rss: https://feeds.npr.org/1001/rss.xml
+      language: en
+      scrape: rss
+      robots_ok: unknown
+      notes: ""
+    - name: NPR World
+      url: https://www.npr.org/sections/world
+      rss: https://feeds.npr.org/1004/rss.xml
+      language: en
+      scrape: rss
+      robots_ok: unknown
+      notes: ""
+    - name: NPR Politics
+      url: https://www.npr.org/sections/politics
+      rss: https://feeds.npr.org/1014/rss.xml
+      language: en
+      scrape: rss
+      robots_ok: unknown
+      notes: ""
+    - name: NPR Business
+      url: https://www.npr.org/sections/business
+      rss: https://feeds.npr.org/1006/rss.xml
+      language: en
+      scrape: rss
+      robots_ok: unknown
+      notes: ""
+    - name: NPR Technology
+      url: https://www.npr.org/sections/technology
+      rss: https://feeds.npr.org/1019/rss.xml
+      language: en
+      scrape: rss
+      robots_ok: unknown
+      notes: ""
+    - name: NPR Science
+      url: https://www.npr.org/sections/science
+      rss: https://feeds.npr.org/1007/rss.xml
+      language: en
+      scrape: rss
+      robots_ok: unknown
+      notes: ""
+    - name: NPR Health
+      url: https://www.npr.org/sections/health
+      rss: https://feeds.npr.org/1128/rss.xml
+      language: en
+      scrape: rss
+      robots_ok: unknown
+      notes: ""
+
+    # CNN section feeds.
+    - name: CNN Top
+      url: https://www.cnn.com
+      rss: http://rss.cnn.com/rss/edition.rss
+      language: en
+      scrape: rss
+      robots_ok: unknown
+      notes: ""
+    - name: CNN World
+      url: https://www.cnn.com/world
+      rss: http://rss.cnn.com/rss/edition_world.rss
+      language: en
+      scrape: rss
+      robots_ok: unknown
+      notes: ""
+    - name: CNN US
+      url: https://www.cnn.com/us
+      rss: http://rss.cnn.com/rss/edition_us.rss
+      language: en
+      scrape: rss
+      robots_ok: unknown
+      notes: ""
+    - name: CNN Business
+      url: https://www.cnn.com/business
+      rss: http://rss.cnn.com/rss/money_latest.rss
+      language: en
+      scrape: rss
+      robots_ok: unknown
+      notes: ""
+    - name: CNN Politics
+      url: https://www.cnn.com/politics
+      rss: http://rss.cnn.com/rss/cnn_allpolitics.rss
+      language: en
+      scrape: rss
+      robots_ok: unknown
+      notes: ""
+    - name: CNN Tech
+      url: https://www.cnn.com/business/tech
+      rss: http://rss.cnn.com/rss/edition_technology.rss
+      language: en
+      scrape: rss
+      robots_ok: unknown
+      notes: ""
+
+    # ABC News.
+    - name: ABC News Top
+      url: https://abcnews.go.com
+      rss: https://abcnews.go.com/abcnews/topstories
+      language: en
+      scrape: rss
+      robots_ok: unknown
+      notes: ""
+    - name: ABC News International
+      url: https://abcnews.go.com/International
+      rss: https://abcnews.go.com/abcnews/internationalheadlines
+      language: en
+      scrape: rss
+      robots_ok: unknown
+      notes: ""
+    - name: ABC News Politics
+      url: https://abcnews.go.com/Politics
+      rss: https://abcnews.go.com/abcnews/politicsheadlines
+      language: en
+      scrape: rss
+      robots_ok: unknown
+      notes: ""
+    - name: ABC News US
+      url: https://abcnews.go.com/US
+      rss: https://abcnews.go.com/abcnews/usheadlines
+      language: en
+      scrape: rss
+      robots_ok: unknown
+      notes: ""
+    - name: ABC News Business
+      url: https://abcnews.go.com/Business
+      rss: https://abcnews.go.com/abcnews/businessheadlines
+      language: en
+      scrape: rss
+      robots_ok: unknown
+      notes: ""
+
+    # CBS News.
+    - name: CBS News Top
+      url: https://www.cbsnews.com
+      rss: https://www.cbsnews.com/latest/rss/main
+      language: en
+      scrape: rss
+      robots_ok: unknown
+      notes: ""
+    - name: CBS News World
+      url: https://www.cbsnews.com/world
+      rss: https://www.cbsnews.com/latest/rss/world
+      language: en
+      scrape: rss
+      robots_ok: unknown
+      notes: ""
+    - name: CBS News US
+      url: https://www.cbsnews.com/us
+      rss: https://www.cbsnews.com/latest/rss/us
+      language: en
+      scrape: rss
+      robots_ok: unknown
+      notes: ""
+    - name: CBS News Politics
+      url: https://www.cbsnews.com/politics
+      rss: https://www.cbsnews.com/latest/rss/politics
+      language: en
+      scrape: rss
+      robots_ok: unknown
+      notes: ""
+    - name: CBS News Tech
+      url: https://www.cbsnews.com/technology
+      rss: https://www.cbsnews.com/latest/rss/technology
+      language: en
+      scrape: rss
+      robots_ok: unknown
+      notes: ""
+
+    # Fox News.
+    - name: Fox News Top
+      url: https://www.foxnews.com
+      rss: https://feeds.foxnews.com/foxnews/latest
+      language: en
+      scrape: rss
+      robots_ok: unknown
+      notes: ""
+    - name: Fox News Politics
+      url: https://www.foxnews.com/politics
+      rss: https://feeds.foxnews.com/foxnews/politics
+      language: en
+      scrape: rss
+      robots_ok: unknown
+      notes: ""
+    - name: Fox News World
+      url: https://www.foxnews.com/world
+      rss: https://feeds.foxnews.com/foxnews/world
+      language: en
+      scrape: rss
+      robots_ok: unknown
+      notes: ""
+    - name: Fox News US
+      url: https://www.foxnews.com/us
+      rss: https://feeds.foxnews.com/foxnews/national
+      language: en
+      scrape: rss
+      robots_ok: unknown
+      notes: ""
+
+    # Other major US outlets.
+    - name: WaPo World
+      url: https://www.washingtonpost.com/world
+      rss: https://feeds.washingtonpost.com/rss/world
+      language: en
+      scrape: rss
+      robots_ok: unknown
+      notes: ""
+    - name: WaPo National
+      url: https://www.washingtonpost.com/national
+      rss: https://feeds.washingtonpost.com/rss/national
+      language: en
+      scrape: rss
+      robots_ok: unknown
+      notes: ""
+    - name: WaPo Politics
+      url: https://www.washingtonpost.com/politics
+      rss: https://feeds.washingtonpost.com/rss/politics
+      language: en
+      scrape: rss
+      robots_ok: unknown
+      notes: ""
+    - name: WaPo Business
+      url: https://www.washingtonpost.com/business
+      rss: https://feeds.washingtonpost.com/rss/business
+      language: en
+      scrape: rss
+      robots_ok: unknown
+      notes: ""
+    - name: USA Today Top
+      url: https://www.usatoday.com
+      rss: https://rssfeeds.usatoday.com/usatoday-NewsTopStories
+      language: en
+      scrape: rss
+      robots_ok: unknown
+      notes: ""
+    - name: USA Today World
+      url: https://www.usatoday.com/news/world
+      rss: https://rssfeeds.usatoday.com/UsatodaycomWorld-TopStories
+      language: en
+      scrape: rss
+      robots_ok: unknown
+      notes: ""
+    - name: USA Today Money
+      url: https://www.usatoday.com/money
+      rss: https://rssfeeds.usatoday.com/usatoday-MoneyTopStories
+      language: en
+      scrape: rss
+      robots_ok: unknown
+      notes: ""
+    - name: Politico Top
+      url: https://www.politico.com
+      rss: https://www.politico.com/rss/politicopicks.xml
+      language: en
+      scrape: rss
+      robots_ok: unknown
+      notes: ""
+    - name: Politico Congress
+      url: https://www.politico.com/congress
+      rss: https://rss.politico.com/congress.xml
+      language: en
+      scrape: rss
+      robots_ok: unknown
+      notes: ""
+    - name: The Hill Top
+      url: https://thehill.com
+      rss: https://thehill.com/news/feed/
+      language: en
+      scrape: rss
+      robots_ok: unknown
+      notes: ""
+    - name: Axios Top
+      url: https://www.axios.com
+      rss: https://api.axios.com/feed/
+      language: en
+      scrape: rss
+      robots_ok: unknown
+      notes: ""
+    - name: Reuters US (via Google News)
+      url: https://www.reuters.com
+      rss: https://news.google.com/rss/search?q=site:reuters.com&hl=en-US&gl=US&ceid=US:en
+      language: en
+      scrape: rss
+      robots_ok: unknown
+      notes: "Reuters disabled native RSS; pulled via Google News search proxy."
+    - name: AP News (via Google News)
+      url: https://apnews.com
+      rss: https://news.google.com/rss/search?q=site:apnews.com&hl=en-US&gl=US&ceid=US:en
+      language: en
+      scrape: rss
+      robots_ok: unknown
+      notes: "AP RSS gone; Google News proxy."
 
   IT:
-    - name: ANSA
+    # ANSA section feeds.
+    - name: ANSA Top
       url: https://www.ansa.it
       rss: https://www.ansa.it/sito/ansait_rss.xml
       language: it
       scrape: rss
       robots_ok: unknown
       notes: ""
+    - name: ANSA Politica
+      url: https://www.ansa.it/sito/notizie/politica
+      rss: https://www.ansa.it/sito/notizie/politica/politica_rss.xml
+      language: it
+      scrape: rss
+      robots_ok: unknown
+      notes: ""
+    - name: ANSA Mondo
+      url: https://www.ansa.it/sito/notizie/mondo
+      rss: https://www.ansa.it/sito/notizie/mondo/mondo_rss.xml
+      language: it
+      scrape: rss
+      robots_ok: unknown
+      notes: ""
+    - name: ANSA Cronaca
+      url: https://www.ansa.it/sito/notizie/cronaca
+      rss: https://www.ansa.it/sito/notizie/cronaca/cronaca_rss.xml
+      language: it
+      scrape: rss
+      robots_ok: unknown
+      notes: ""
+    - name: ANSA Economia
+      url: https://www.ansa.it/sito/notizie/economia
+      rss: https://www.ansa.it/sito/notizie/economia/economia_rss.xml
+      language: it
+      scrape: rss
+      robots_ok: unknown
+      notes: ""
+    - name: ANSA Sport
+      url: https://www.ansa.it/sito/notizie/sport
+      rss: https://www.ansa.it/sito/notizie/sport/sport_rss.xml
+      language: it
+      scrape: rss
+      robots_ok: unknown
+      notes: ""
+    - name: ANSA Cultura
+      url: https://www.ansa.it/sito/notizie/cultura
+      rss: https://www.ansa.it/sito/notizie/cultura/cultura_rss.xml
+      language: it
+      scrape: rss
+      robots_ok: unknown
+      notes: ""
+    - name: ANSA Tecnologia
+      url: https://www.ansa.it/sito/notizie/tecnologia
+      rss: https://www.ansa.it/sito/notizie/tecnologia/tecnologia_rss.xml
+      language: it
+      scrape: rss
+      robots_ok: unknown
+      notes: ""
+    - name: ANSA Scienza
+      url: https://www.ansa.it/canale_scienza/index.shtml
+      rss: https://www.ansa.it/canale_scienza/notizie/scienza_rss.xml
+      language: it
+      scrape: rss
+      robots_ok: unknown
+      notes: ""
+    - name: ANSA Magazine
+      url: https://www.ansa.it/sito/notizie/magazine
+      rss: https://www.ansa.it/sito/notizie/magazine/magazine_rss.xml
+      language: it
+      scrape: rss
+      robots_ok: unknown
+      notes: ""
+
+    # Repubblica section feeds.
+    - name: Repubblica Top
+      url: https://www.repubblica.it
+      rss: https://www.repubblica.it/rss/homepage/rss2.0.xml
+      language: it
+      scrape: rss
+      robots_ok: unknown
+      notes: ""
+    - name: Repubblica Politica
+      url: https://www.repubblica.it/politica
+      rss: https://www.repubblica.it/rss/politica/rss2.0.xml
+      language: it
+      scrape: rss
+      robots_ok: unknown
+      notes: ""
+    - name: Repubblica Esteri
+      url: https://www.repubblica.it/esteri
+      rss: https://www.repubblica.it/rss/esteri/rss2.0.xml
+      language: it
+      scrape: rss
+      robots_ok: unknown
+      notes: ""
+    - name: Repubblica Cronaca
+      url: https://www.repubblica.it/cronaca
+      rss: https://www.repubblica.it/rss/cronaca/rss2.0.xml
+      language: it
+      scrape: rss
+      robots_ok: unknown
+      notes: ""
+    - name: Repubblica Economia
+      url: https://www.repubblica.it/economia
+      rss: https://www.repubblica.it/rss/economia/rss2.0.xml
+      language: it
+      scrape: rss
+      robots_ok: unknown
+      notes: ""
+    - name: Repubblica Sport
+      url: https://www.repubblica.it/sport
+      rss: https://www.repubblica.it/rss/sport/rss2.0.xml
+      language: it
+      scrape: rss
+      robots_ok: unknown
+      notes: ""
+    - name: Repubblica Tecnologia
+      url: https://www.repubblica.it/tecnologia
+      rss: https://www.repubblica.it/rss/tecnologia/rss2.0.xml
+      language: it
+      scrape: rss
+      robots_ok: unknown
+      notes: ""
+    - name: Repubblica Spettacoli
+      url: https://www.repubblica.it/spettacoli
+      rss: https://www.repubblica.it/rss/spettacoli/rss2.0.xml
+      language: it
+      scrape: rss
+      robots_ok: unknown
+      notes: ""
+
+    # Corriere section feeds.
+    - name: Corriere Top
+      url: https://www.corriere.it
+      rss: https://xml2.corriereobjects.it/rss/homepage.xml
+      language: it
+      scrape: rss
+      robots_ok: unknown
+      notes: ""
+    - name: Corriere Politica
+      url: https://www.corriere.it/politica
+      rss: https://xml2.corriereobjects.it/rss/politica.xml
+      language: it
+      scrape: rss
+      robots_ok: unknown
+      notes: ""
+    - name: Corriere Esteri
+      url: https://www.corriere.it/esteri
+      rss: https://xml2.corriereobjects.it/rss/esteri.xml
+      language: it
+      scrape: rss
+      robots_ok: unknown
+      notes: ""
+    - name: Corriere Cronache
+      url: https://www.corriere.it/cronache
+      rss: https://xml2.corriereobjects.it/rss/cronache.xml
+      language: it
+      scrape: rss
+      robots_ok: unknown
+      notes: ""
+    - name: Corriere Economia
+      url: https://www.corriere.it/economia
+      rss: https://xml2.corriereobjects.it/rss/economia.xml
+      language: it
+      scrape: rss
+      robots_ok: unknown
+      notes: ""
+    - name: Corriere Sport
+      url: https://www.corriere.it/sport
+      rss: https://xml2.corriereobjects.it/rss/sport.xml
+      language: it
+      scrape: rss
+      robots_ok: unknown
+      notes: ""
+    - name: Corriere Tecnologia
+      url: https://www.corriere.it/tecnologia
+      rss: https://xml2.corriereobjects.it/rss/tecnologia.xml
+      language: it
+      scrape: rss
+      robots_ok: unknown
+      notes: ""
+
+    # Other big IT outlets.
+    - name: La Stampa Top
+      url: https://www.lastampa.it
+      rss: https://www.lastampa.it/rss/homepage.xml
+      language: it
+      scrape: rss
+      robots_ok: unknown
+      notes: ""
+    - name: Il Sole 24 Ore Top
+      url: https://www.ilsole24ore.com
+      rss: https://www.ilsole24ore.com/rss/italia.xml
+      language: it
+      scrape: rss
+      robots_ok: unknown
+      notes: ""
+    - name: Il Sole 24 Ore Mondo
+      url: https://www.ilsole24ore.com/mondo
+      rss: https://www.ilsole24ore.com/rss/mondo.xml
+      language: it
+      scrape: rss
+      robots_ok: unknown
+      notes: ""
+    - name: Il Sole 24 Ore Economia
+      url: https://www.ilsole24ore.com/economia
+      rss: https://www.ilsole24ore.com/rss/economia.xml
+      language: it
+      scrape: rss
+      robots_ok: unknown
+      notes: ""
+    - name: Il Fatto Quotidiano
+      url: https://www.ilfattoquotidiano.it
+      rss: https://www.ilfattoquotidiano.it/feed/
+      language: it
+      scrape: rss
+      robots_ok: unknown
+      notes: ""
+    - name: Il Giornale
+      url: https://www.ilgiornale.it
+      rss: https://www.ilgiornale.it/feed.xml
+      language: it
+      scrape: rss
+      robots_ok: unknown
+      notes: ""
+    - name: RAI News Top
+      url: https://www.rainews.it
+      rss: https://www.rainews.it/rss/news
+      language: it
+      scrape: rss
+      robots_ok: unknown
+      notes: ""
+    - name: TG24 Sky
+      url: https://tg24.sky.it
+      rss: https://tg24.sky.it/rss/tg24.xml
+      language: it
+      scrape: rss
+      robots_ok: unknown
+      notes: ""
+    - name: Adnkronos
+      url: https://www.adnkronos.com
+      rss: https://www.adnkronos.com/rss
+      language: it
+      scrape: rss
+      robots_ok: unknown
+      notes: ""
 
   MM:
+    # Long Tail — many MM outlets block bot UAs or have no RSS. Keep
+    # working feeds, supplement via Google News MM search queries
+    # (see gnews_queries.yaml).
     - name: Myanmar Now (EN)
       url: https://myanmar-now.org
       rss: https://myanmar-now.org/en/feed
       language: en
       scrape: rss
       robots_ok: unknown
-      notes: "English edition. Burmese-language site needs separate scrape. Irrawaddy and Frontier Myanmar block bot UAs (403)."
+      notes: "English edition. Burmese site needs separate scrape."
     - name: BBC Burmese
       url: https://www.bbc.com/burmese
       rss: https://feeds.bbci.co.uk/burmese/rss.xml
       language: my
       scrape: rss
       robots_ok: unknown
-      notes: "Burmese language. BBC RSS is well-engineered and stable."
+      notes: "Well-engineered, stable."
     - name: RFA Burmese
       url: https://www.rfa.org/burmese
       rss: https://www.rfa.org/burmese/rss
       language: my
       scrape: rss
       robots_ok: unknown
-      notes: "Burmese language. Radio Free Asia."
+      notes: "Radio Free Asia."
+    - name: DVB Burmese
+      url: https://burmese.dvb.no
+      rss: https://burmese.dvb.no/feed
+      language: my
+      scrape: rss
+      robots_ok: unknown
+      notes: "Democratic Voice of Burma."
+    - name: DVB English
+      url: https://english.dvb.no
+      rss: https://english.dvb.no/feed
+      language: en
+      scrape: rss
+      robots_ok: unknown
+      notes: ""
+    - name: Khit Thit Media
+      url: https://yktnews.com
+      rss: https://yktnews.com/feed/
+      language: my
+      scrape: rss
+      robots_ok: unknown
+      notes: "Independent Burmese outlet."
+    - name: Irrawaddy (EN)
+      url: https://www.irrawaddy.com
+      rss: https://www.irrawaddy.com/feed
+      language: en
+      scrape: rss
+      robots_ok: unknown
+      notes: "Bot UA sometimes blocked; identify as browser UA."
+    - name: VOA Burmese
+      url: https://burmese.voanews.com
+      rss: https://burmese.voanews.com/api/zo$omeyiyt
+      language: my
+      scrape: rss
+      robots_ok: unknown
+      notes: "VOA Burmese RSS path."
+    - name: Mizzima English
+      url: https://eng.mizzima.com
+      rss: https://eng.mizzima.com/feed/
+      language: en
+      scrape: rss
+      robots_ok: unknown
+      notes: ""
     - name: Mizzima Burmese
       url: https://www.mizzimaburmese.com/
       rss: ""
       language: my
       scrape: beautifulsoup
       robots_ok: unknown
-      notes: "No RSS on the Burmese edition. Homepage scraped via sources/scrapers/mm/mizzima_burmese.py. ~60 posts per pull."
+      notes: "No RSS on Burmese edition. Scraped via mizzima_burmese.py."
 
   KZ:
     - name: Astana Times
@@ -85,17 +1051,101 @@ countries:
       scrape: rss
       robots_ok: unknown
       notes: "English-language outlet."
+    - name: NUR.KZ All
+      url: https://www.nur.kz
+      rss: https://www.nur.kz/rss/all.rss
+      language: ru
+      scrape: rss
+      robots_ok: unknown
+      notes: "Russian-language. 50 entries."
+    - name: NUR.KZ Politics
+      url: https://www.nur.kz/politics
+      rss: https://www.nur.kz/rss/politics.rss
+      language: ru
+      scrape: rss
+      robots_ok: unknown
+      notes: ""
+    - name: NUR.KZ World
+      url: https://www.nur.kz/world
+      rss: https://www.nur.kz/rss/world.rss
+      language: ru
+      scrape: rss
+      robots_ok: unknown
+      notes: ""
     - name: Azattyq (RFE/RL Kazakh)
       url: https://www.azattyq.org
       rss: https://www.azattyq.org/api/
       language: kk
       scrape: rss
       robots_ok: unknown
-      notes: "Kazakh language. RFE/RL Kazakh service. Feed lives at /api/ not a normal RSS path."
-    - name: NUR.KZ
-      url: https://www.nur.kz
-      rss: https://www.nur.kz/rss/all.rss
+      notes: "Kazakh language. Feed lives at /api/."
+    - name: Tengri News RU
+      url: https://tengrinews.kz
+      rss: https://tengrinews.kz/rss
       language: ru
       scrape: rss
       robots_ok: unknown
-      notes: "Russian-language outlet covering Kazakhstan. 50 entries per feed pull."
+      notes: ""
+    - name: KazTAG
+      url: https://kaztag.kz
+      rss: https://kaztag.kz/ru/feed
+      language: ru
+      scrape: rss
+      robots_ok: unknown
+      notes: ""
+    - name: Kazinform RU
+      url: https://www.inform.kz
+      rss: https://www.inform.kz/rss/ru/all.xml
+      language: ru
+      scrape: rss
+      robots_ok: unknown
+      notes: ""
+    - name: Kazinform EN
+      url: https://qazinform.com
+      rss: https://qazinform.com/rss
+      language: en
+      scrape: rss
+      robots_ok: unknown
+      notes: ""
+    - name: Liter KZ
+      url: https://liter.kz
+      rss: https://liter.kz/rss/
+      language: ru
+      scrape: rss
+      robots_ok: unknown
+      notes: ""
+    - name: Zakon KZ
+      url: https://www.zakon.kz
+      rss: https://www.zakon.kz/rss/news/all
+      language: ru
+      scrape: rss
+      robots_ok: unknown
+      notes: ""
+    - name: Caravan KZ
+      url: https://www.caravan.kz
+      rss: https://www.caravan.kz/rss/
+      language: ru
+      scrape: rss
+      robots_ok: unknown
+      notes: ""
+    - name: Sputnik Kazakhstan
+      url: https://ru.sputnik.kz
+      rss: https://ru.sputnik.kz/export/rss2/archive/index.xml
+      language: ru
+      scrape: rss
+      robots_ok: unknown
+      notes: ""
+    - name: Vlast KZ
+      url: https://vlast.kz
+      rss: https://vlast.kz/rss
+      language: ru
+      scrape: rss
+      robots_ok: unknown
+      notes: ""
+    - name: Informburo KZ
+      url: https://informburo.kz
+      rss: https://informburo.kz/rss/news.rss
+      language: ru
+      scrape: rss
+      robots_ok: unknown
+      notes: ""
