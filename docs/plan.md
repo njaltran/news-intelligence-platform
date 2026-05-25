@@ -56,7 +56,7 @@ docs/
 - Drop existing extracts into `data/raw/` with a `README.md` describing source, date range, row count, schema.
 - Fill the `<existing>` column of the Extraction Targets table above with real numbers.
 - Compare existing schema to the documented one (`source, country_target, title, summary, url, published_at, extracted_at`). Note gaps and fields to add.
-- If data is already in a DuckDB file, copy it to a shared location and point a one-off ingestion script at it that re-writes through dlt, so the path is reproducible. `rest_api_pipeline.py` is the home for that script.
+- If data is already in a DuckDB file, copy it to a shared location and point a one-off ingestion script at it that re-writes through dlt, so the path is reproducible. Add the script under `pipelines/` (or `scripts/` if one-shot).
 - **Extraction plan**: list the APIs and outlets needed to hit the Week 3 target. For each: rate limit, free-tier quota, auth method, and estimated time to fill the 6-week window.
 - Identify the bottleneck source (NewsAPI quota? GDELT BigQuery cost? RSS coverage in MM/KZ?) and propose a workaround.
 
@@ -85,7 +85,7 @@ docs/
 ## Week 2 (2026-06-01 to 06-08): Pipeline + storage spine + bulk extraction
 
 ### Nadi
-- `rest_api_pipeline.py`: add NewsAPI, GDELT, RSS resources. Each writes to DuckDB raw lake first.
+- Flesh out `sources/newsapi.py` (stub today), `sources/rss.py` (new). GDELT is already split out. Wire all three through `pipelines/ingest_apis.py` and `pipelines/ingest_rss.py`. Each writes to DuckDB raw lake first.
 - **Bulk extraction**: kick off the scaled pull (target ~50% of Week 3 target by end of Week 2). Use dlt's `dlt.sources.incremental` so reruns are cheap.
 - Stand up ClickHouse locally (`docker-compose.yml` at the repo root). Single-node is fine.
 - Add a dlt destination for ClickHouse. Pattern: raw to DuckDB, modelled aggregates to ClickHouse.

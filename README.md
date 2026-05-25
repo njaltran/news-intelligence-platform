@@ -77,7 +77,7 @@ uv pip install -r requirements.txt
 # edit .dlt/secrets.toml with NewsAPI key, GDELT credentials, ClickHouse password
 
 # run ingestion
-uv run python rest_api_pipeline.py
+uv run python pipelines/ingest_apis.py
 
 # launch dashboard
 uv run marimo edit dashboard/app.py
@@ -137,14 +137,13 @@ dlt resolves `.dlt/secrets.toml` and configs from cwd, so all commands run from 
 │   └── config.toml
 ├── .github/
 │   └── pull_request_template.md
-├── rest_api_pipeline.py       # to be split into sources/ + pipelines/  (legacy, see code-layout doc)
 ├── requirements.txt
 ├── CONTRIBUTING.md
 ├── LICENSE
 └── README.md
 ```
 
-See [`docs/architecture/06-code-layout.md`](docs/architecture/06-code-layout.md) for the rationale and migration plan for the legacy root-level files.
+See [`docs/architecture/06-code-layout.md`](docs/architecture/06-code-layout.md) for the rationale behind this layout.
 
 ## Open questions
 

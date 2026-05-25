@@ -17,7 +17,7 @@ Examples:
 
 ```bash
 # example
-uv run python rest_api_pipeline.py
+uv run python pipelines/ingest_apis.py
 ```
 
 ## Checklist

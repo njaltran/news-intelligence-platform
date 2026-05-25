@@ -103,19 +103,3 @@ def gdelt_source(
         end=end,
         chunk_minutes=chunk_minutes,
     )
-
-
-def load_gdelt() -> None:
-    pipeline = dlt.pipeline(
-        pipeline_name="gdelt",
-        destination="duckdb",
-        dataset_name="gdelt_data",
-        dev_mode=True,
-    )
-
-    load_info = pipeline.run(gdelt_source())
-    print(load_info)  # noqa: T201
-
-
-if __name__ == "__main__":
-    load_gdelt()

@@ -25,7 +25,7 @@ Each PR includes:
 ## Code conventions
 
 - Python: black-compatible formatting (no enforced linter yet).
-- dlt: keep resources in `rest_api_pipeline.py` until it gets too big. Split per source once it crosses ~300 lines.
+- dlt: one source per file under `sources/`. Pipeline entry points (thin) under `pipelines/`.
 - No secrets in code. Use `dlt.secrets[...]` and `.dlt/secrets.toml` (gitignored).
 - Pin library versions in `requirements.txt`.
 
@@ -50,7 +50,7 @@ Full tree in [README.md](README.md#repository-layout). Rationale and migration p
 All dlt commands run from the repo root:
 
 ```bash
-uv run python rest_api_pipeline.py
+uv run python pipelines/ingest_apis.py
 uv run dlt --non-interactive pipeline gdelt info
 ```
 
