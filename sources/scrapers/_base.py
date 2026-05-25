@@ -59,7 +59,8 @@ class Scraper:
         return self.parse_article(BeautifulSoup(html, "html.parser"))
 
     def run(self) -> Iterator[dict[str, Any]]:
-        """Fetch homepage, parse, normalise to project schema."""
+        """Fetch homepage, parse, follow each URL to fill article fields,
+        normalise to project schema."""
         extracted_at = pendulum.now("UTC").to_iso8601_string()
         html = self.fetch(self.base_url)
         time.sleep(self.request_delay_s)
@@ -67,12 +68,14 @@ class Scraper:
             url = partial.get("url")
             if not url:
                 continue
+            article_fields = self.fetch_article(url)
             yield {
                 "source": partial.get("source", self.name),
                 "country_target": self.country,
-                "title": partial.get("title"),
-                "summary": partial.get("summary"),
+                "title": partial.get("title") or article_fields.get("title"),
+                "summary": partial.get("summary") or article_fields.get("summary"),
                 "url": url,
-                "published_at": partial.get("published_at"),
+                "published_at": partial.get("published_at")
+                or article_fields.get("published_at"),
                 "extracted_at": extracted_at,
             }
