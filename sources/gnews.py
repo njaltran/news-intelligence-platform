@@ -20,6 +20,7 @@ and dedups on URL via merge disposition.
 
 from __future__ import annotations
 
+import logging
 import time
 from pathlib import Path
 from typing import Any, Iterator
@@ -29,6 +30,8 @@ import dlt
 import feedparser
 import yaml
 from dlt.common.pendulum import pendulum
+
+logger = logging.getLogger(__name__)
 
 USER_AGENT = "Mozilla/5.0 (compatible; NewsIntelBot/0.1)"
 
@@ -47,7 +50,7 @@ REQUEST_DELAY_S = 0.2  # be polite to Google News
 
 def _load_query_catalogue() -> list[dict[str, str]]:
     """Flatten gnews_queries.yaml to one entry per Google News feed."""
-    with GNEWS_YAML.open() as fh:
+    with GNEWS_YAML.open(encoding="utf-8") as fh:
         config = yaml.safe_load(fh)
     feeds: list[dict[str, str]] = []
     for country_code, spec in (config.get("countries") or {}).items():
@@ -103,13 +106,26 @@ def iter_gnews_articles() -> Iterator[dict[str, Any]]:
     the combined pipeline can chain it with the per-outlet iterator
     into one dlt resource."""
     extracted_at = pendulum.now("UTC").to_iso8601_string()
-    for feed in _load_query_catalogue():
+    feeds = _load_query_catalogue()
+    failures: list[tuple[str, str, str]] = []
+    for feed in feeds:
         try:
             parsed = feedparser.parse(feed["rss"], agent=USER_AGENT)
-        except Exception:
+        except Exception as exc:
+            logger.warning(
+                "Google News feed fetch failed: %s (%s): %s",
+                feed["source"], feed["rss"], exc,
+            )
+            failures.append((feed["source"], feed["rss"], repr(exc)))
             time.sleep(REQUEST_DELAY_S)
             continue
         if parsed.bozo and not parsed.entries:
+            err = getattr(parsed, "bozo_exception", "no entries")
+            logger.warning(
+                "Google News feed empty/malformed: %s (%s): %s",
+                feed["source"], feed["rss"], err,
+            )
+            failures.append((feed["source"], feed["rss"], str(err)))
             time.sleep(REQUEST_DELAY_S)
             continue
         for entry in parsed.entries:
@@ -126,6 +142,11 @@ def iter_gnews_articles() -> Iterator[dict[str, Any]]:
                 "extracted_at": extracted_at,
             }
         time.sleep(REQUEST_DELAY_S)
+    if failures:
+        logger.warning(
+            "Google News run: %d/%d feeds failed or empty",
+            len(failures), len(feeds),
+        )
 
 
 @dlt.resource(name="articles", primary_key="url", write_disposition="merge")

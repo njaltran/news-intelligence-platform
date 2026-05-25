@@ -9,6 +9,7 @@ this resource defends. Velocity is bounded by publisher cadence, so
 periodic polling is sufficient. No Kafka.
 """
 
+import logging
 from pathlib import Path
 from typing import Any, Iterator
 
@@ -16,6 +17,8 @@ import dlt
 import feedparser
 import yaml
 from dlt.common.pendulum import pendulum
+
+logger = logging.getLogger(__name__)
 
 # Some publishers 403 the default feedparser UA. Identify ourselves as
 # a real-looking bot so MM/KZ outlets behind light WAFs let us through.
@@ -71,12 +74,25 @@ def iter_rss_articles() -> Iterator[dict[str, Any]]:
     generator so the combined pipeline can chain it with the Google
     News iterator into one dlt resource."""
     extracted_at = pendulum.now("UTC").to_iso8601_string()
-    for outlet in _load_rss_outlets():
+    outlets = _load_rss_outlets()
+    failures: list[tuple[str, str, str]] = []
+    for outlet in outlets:
         try:
             parsed = feedparser.parse(outlet["rss"], agent=USER_AGENT)
-        except Exception:
+        except Exception as exc:
+            logger.warning(
+                "RSS feed fetch failed: %s (%s): %s",
+                outlet["source"], outlet["rss"], exc,
+            )
+            failures.append((outlet["source"], outlet["rss"], repr(exc)))
             continue
         if parsed.bozo and not parsed.entries:
+            err = getattr(parsed, "bozo_exception", "no entries")
+            logger.warning(
+                "RSS feed empty/malformed: %s (%s): %s",
+                outlet["source"], outlet["rss"], err,
+            )
+            failures.append((outlet["source"], outlet["rss"], str(err)))
             continue
         for entry in parsed.entries:
             url = entry.get("link")
@@ -91,6 +107,11 @@ def iter_rss_articles() -> Iterator[dict[str, Any]]:
                 "published_at": _parse_published(entry),
                 "extracted_at": extracted_at,
             }
+    if failures:
+        logger.warning(
+            "RSS run: %d/%d curated feeds failed or empty",
+            len(failures), len(outlets),
+        )
 
 
 @dlt.resource(name="articles", primary_key="url", write_disposition="merge")

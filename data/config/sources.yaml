@@ -8,7 +8,9 @@
 #   url         homepage
 #   rss         RSS feed URL (if available)
 #   language    ISO 639-1 code (de, en, it, my, kk, ru)
-#   scrape      strategy: "rss" | "beautifulsoup" | "newsapi" | "gnews"
+#   scrape      strategy: "rss" | "beautifulsoup" | "newsapi"
+#               (Google News feeds are configured separately in
+#               data/config/gnews_queries.yaml, not via this file)
 #   robots_ok   has robots.txt been checked? true/false/unknown
 #   notes       quirks (paywalls, JS-rendered, encoding, etc.)
 #
