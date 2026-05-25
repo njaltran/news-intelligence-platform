@@ -46,6 +46,7 @@ class _FakeScraper(Scraper):
         return [
             {"url": "http://example.invalid/a", "title": "Home A"},
             {"url": "http://example.invalid/b"},
+            {"url": "http://example.invalid/c", "title": ""},
         ]
 
 
@@ -56,6 +57,7 @@ def test_run_merges_article_fields(monkeypatch):
     article_responses = {
         "http://example.invalid/a": {"title": "Article A title", "summary": "A summary"},
         "http://example.invalid/b": {"title": "Article B title", "summary": "B summary"},
+        "http://example.invalid/c": {"title": "Article C title", "summary": "C summary"},
     }
     monkeypatch.setattr(
         Scraper, "fetch_article", lambda self, url: article_responses[url]
@@ -64,7 +66,7 @@ def test_run_merges_article_fields(monkeypatch):
 
     rows = list(_FakeScraper().run())
 
-    assert len(rows) == 2
+    assert len(rows) == 3
     # Row 0: homepage gave title => homepage title wins; summary filled from article.
     assert rows[0]["url"] == "http://example.invalid/a"
     assert rows[0]["title"] == "Home A"
@@ -73,6 +75,11 @@ def test_run_merges_article_fields(monkeypatch):
     assert rows[1]["url"] == "http://example.invalid/b"
     assert rows[1]["title"] == "Article B title"
     assert rows[1]["summary"] == "B summary"
+    # Row 2: empty-string homepage title is a value, not a NULL — homepage still wins.
+    assert rows[2]["url"] == "http://example.invalid/c"
+    assert rows[2]["title"] == ""
+    # Summary was None on the homepage, so article fills it.
+    assert rows[2]["summary"] == "C summary"
     # Common columns are present.
     for row in rows:
         assert row["source"] == "fake"

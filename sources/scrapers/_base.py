@@ -72,10 +72,9 @@ class Scraper:
             yield {
                 "source": partial.get("source", self.name),
                 "country_target": self.country,
-                "title": partial.get("title") or article_fields.get("title"),
-                "summary": partial.get("summary") or article_fields.get("summary"),
+                "title": partial["title"] if partial.get("title") is not None else article_fields.get("title"),
+                "summary": partial["summary"] if partial.get("summary") is not None else article_fields.get("summary"),
                 "url": url,
-                "published_at": partial.get("published_at")
-                or article_fields.get("published_at"),
+                "published_at": partial["published_at"] if partial.get("published_at") is not None else article_fields.get("published_at"),
                 "extracted_at": extracted_at,
             }
