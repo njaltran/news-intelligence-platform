@@ -31,13 +31,19 @@ Each PR includes:
 
 ## Folder layout
 
-See [README.md](README.md#repository-layout) for the full tree. Headline:
+Full tree in [README.md](README.md#repository-layout). Rationale and migration plan in [`docs/architecture/06-code-layout.md`](docs/architecture/06-code-layout.md). Headline:
 
-- `rest_api_pipeline.py`, `gdelt_dashboard.py` at root.
-- `data/` for extracts, ground truth, source configs. Large files go to a shared drive, samples only in repo.
-- `docs/` for plan, briefing, pitch, and `docs/architecture/` (EA artifacts + ADRs).
-- `.dlt/` for the dlt workspace (`secrets.toml` is gitignored).
-- `.github/pull_request_template.md` for the PR template.
+- `sources/` — dlt sources, one file per data source. Scrapers in `sources/scrapers/<country>/`.
+- `processing/` — post-ingestion transforms (clean, embed, topic, divergence).
+- `warehouse/` — DuckDB raw + ClickHouse modelled destinations, DDL, schemas.
+- `dashboard/` — marimo notebook.
+- `pipelines/` — thin entry points wiring sources to destinations.
+- `scripts/` — one-off CLI helpers.
+- `tests/` — pytest, mirrors source layout.
+- `data/` — extracts, ground truth, configs. Large files via shared drive.
+- `docs/` — plan, briefing, pitch, and `docs/architecture/` (EA artifacts + ADRs).
+- `.dlt/` — dlt workspace (`secrets.toml` is gitignored).
+- `.github/pull_request_template.md` — PR template.
 
 ## Working directory
 

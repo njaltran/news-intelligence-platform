@@ -89,33 +89,63 @@ dlt resolves `.dlt/secrets.toml` and configs from cwd, so all commands run from 
 
 ```
 .
-├── rest_api_pipeline.py       # dlt ingestion pipeline (NewsAPI, GDELT, RSS)
-├── gdelt_dashboard.py         # marimo dashboard
-├── requirements.txt           # Python deps
-├── .dlt/                      # dlt workspace (secrets.toml gitignored)
-│   └── config.toml
-├── data/                      # extracts and configs (large files via shared drive)
-│   ├── raw/                   # untouched extracts (NewsAPI, GDELT, RSS, scraped)
+├── sources/                   # dlt @source / @resource per data source
+│   ├── newsapi.py             # NewsAPI                            (Nadi)
+│   ├── gdelt.py               # GDELT                              (Nadi)
+│   ├── rss.py                 # RSS feeds                          (Nadi)
+│   └── scrapers/              # BeautifulSoup scrapers as dlt resources
+│       ├── _base.py
+│       ├── mm/                # Myanmar outlets                    (Jack)
+│       └── kz/                # Kazakhstan outlets                 (Jack)
+├── processing/                # post-ingestion transforms          (Nadi)
+│   ├── clean.py
+│   ├── embeddings.py
+│   ├── topics.py
+│   └── divergence.py
+├── warehouse/                 # destinations + modelled tables     (Nadi + Jack)
+│   ├── destinations.py        # DuckDB raw + ClickHouse DWH
+│   ├── models.py
+│   └── ddl.sql
+├── dashboard/                 # marimo dashboard
+│   └── app.py
+├── pipelines/                 # entry points (thin wiring)         (Nadi)
+│   ├── ingest_apis.py
+│   ├── ingest_rss.py
+│   ├── ingest_scrapers.py
+│   ├── process.py
+│   └── build_warehouse.py
+├── scripts/                   # one-off CLI helpers
+├── tests/                     # pytest
+├── data/                      # extracts + configs (large files via shared drive)
+│   ├── raw/                   # untouched extracts
 │   ├── interim/               # cleaned, dedup'd (mostly gitignored)
-│   ├── ground_truth/          # hand-coded evaluation examples (Karina)
+│   ├── ground_truth/          # hand-coded evaluation examples     (Karina)
 │   └── config/
 │       └── sources.yaml       # outlets per country
 ├── docs/
 │   ├── plan.md                # 6-week team plan
-│   ├── briefing.md            # project briefing
-│   ├── analysis_plan.md       # chart specs for the dashboard
-│   ├── pitch/                 # pitch email + slide deck
-│   └── architecture/          # EA artifacts (owned by Jack)
+│   ├── briefing.md
+│   ├── analysis_plan.md
+│   ├── pitch/                 # pitch email + slide deck           (Karina)
+│   └── architecture/          # EA artifacts                       (Jack)
 │       ├── 00-context.md
 │       ├── 01-ea-hierarchy.md
 │       ├── 02-viewpoints.md
+│       ├── 06-code-layout.md
 │       └── adr/               # Architecture Decision Records
+├── .dlt/                      # dlt workspace (secrets.toml gitignored)
+│   └── config.toml
 ├── .github/
 │   └── pull_request_template.md
+├── rest_api_pipeline.py       # to be split into sources/ + pipelines/  (legacy, see code-layout doc)
+├── gdelt_dashboard.py         # to be moved to dashboard/app.py         (legacy)
+├── requirements.txt
 ├── CONTRIBUTING.md
 ├── LICENSE
 └── README.md
 ```
+
+See [`docs/architecture/06-code-layout.md`](docs/architecture/06-code-layout.md) for the rationale and migration plan for the legacy root-level files.
 
 ## Open questions
 

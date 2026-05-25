@@ -1,0 +1,45 @@
+# 06. Code Layout
+
+Where code lives and why. Keep each concern in its own folder so the team can work in parallel without merge conflicts.
+
+## Folders
+
+| Folder | Concern | Owner |
+|--------|---------|-------|
+| `sources/` | dlt `@source` / `@resource` per data source. **Pull logic only**, no I/O orchestration. | Nadi (APIs, RSS), Jack (scrapers) |
+| `sources/scrapers/` | BeautifulSoup scrapers wrapped as dlt resources. One file per outlet, organised by country (`mm/`, `kz/`). | Jack |
+| `processing/` | Post-ingestion transforms: clean, embed, topic-model, compute divergence. | Nadi (Jack reviews schema) |
+| `warehouse/` | Destination configs (DuckDB raw, ClickHouse modelled) + DDL + model schemas. | Nadi + Jack |
+| `dashboard/` | marimo notebook (`app.py`). Reads from ClickHouse. | All |
+| `pipelines/` | Thin entry points wiring sources to destinations. One file per batch. **No business logic.** | Nadi |
+| `scripts/` | One-off CLI helpers (source validation, schema dumps). | Anyone |
+| `tests/` | pytest suite mirroring the source layout. | Author of code under test |
+
+## Dependency direction
+
+```
+pipelines/  ->  sources/   +   warehouse/destinations
+pipelines/  ->  processing/
+processing/ ->  warehouse/models
+dashboard/  ->  warehouse/  (reads ClickHouse, no writes)
+```
+
+Sources do not import from processing. Processing does not import from sources. Pipelines tie them together.
+
+## Migration from the current flat layout
+
+Existing files at the repo root will be moved as follows. Migration is a follow-up PR per file, not all at once.
+
+| Current file | Target location |
+|--------------|-----------------|
+| `rest_api_pipeline.py` | split into `sources/newsapi.py`, `sources/gdelt.py`, `pipelines/ingest_apis.py` |
+| `gdelt_dashboard.py` | `dashboard/app.py` |
+
+Both files stay at root until the migration PRs land, so nothing breaks in the meantime.
+
+## Naming
+
+- Files: `snake_case.py`.
+- Classes (scrapers): `<Outlet>Scraper`, e.g. `IrrawaddyScraper`.
+- dlt resources: `@dlt.resource(name="articles", ...)` — every source emits to the same logical table.
+- Per-country folders use ISO 3166-1 alpha-2 codes (`mm`, `kz`, `de`, `us`, `it`).

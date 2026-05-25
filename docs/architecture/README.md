@@ -10,6 +10,7 @@ EA artifacts for the News Intelligence Platform. Owned by Jack.
 - [`03-5vs.md`](03-5vs.md): 5 Vs profile of this project.
 - [`04-streaming-shape.md`](04-streaming-shape.md): Lambda vs Kappa positioning.
 - [`05-scraping-pattern.md`](05-scraping-pattern.md): reusable BeautifulSoup-as-dlt-resource pattern.
+- [`06-code-layout.md`](06-code-layout.md): where each kind of script lives and why.
 - [`adr/`](adr/): Architecture Decision Records.
 
 ## Diagrams
