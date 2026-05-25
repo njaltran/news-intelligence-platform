@@ -1,0 +1,60 @@
+# News outlet sources per country.
+#
+# Owned by Karina (curation) and Jack (scrapability assessment).
+# Used by rest_api_pipeline.py (RSS resources) and scrapers.
+#
+# Fields:
+#   name        human-friendly outlet name
+#   url         homepage
+#   rss         RSS feed URL (if available)
+#   language    ISO 639-1 code (de, en, it, my, kk, ru)
+#   scrape      strategy: "rss" | "beautifulsoup" | "newsapi"
+#   robots_ok   has robots.txt been checked? true/false/unknown
+#   notes       quirks (paywalls, JS-rendered, encoding, etc.)
+
+countries:
+  DE:
+    - name: Spiegel
+      url: https://www.spiegel.de
+      rss: https://www.spiegel.de/schlagzeilen/index.rss
+      language: de
+      scrape: rss
+      robots_ok: unknown
+      notes: ""
+    # add Tagesschau, Zeit, Süddeutsche, FAZ
+
+  US:
+    - name: TODO
+      url: ""
+      rss: ""
+      language: en
+      scrape: rss
+      robots_ok: unknown
+      notes: "Karina to populate"
+
+  IT:
+    - name: TODO
+      url: ""
+      rss: ""
+      language: it
+      scrape: rss
+      robots_ok: unknown
+      notes: "Karina to populate"
+
+  MM:
+    - name: TODO
+      url: ""
+      rss: ""
+      language: my
+      scrape: beautifulsoup
+      robots_ok: unknown
+      notes: "Burmese script. Encoding gotchas. Jack to assess scrapability."
+
+  KZ:
+    - name: TODO
+      url: ""
+      rss: ""
+      language: kk
+      scrape: beautifulsoup
+      robots_ok: unknown
+      notes: "Kazakh and Russian content mixed. Jack to assess scrapability."

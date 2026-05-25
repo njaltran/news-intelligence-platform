@@ -32,25 +32,28 @@ Update the `<existing>` row in Week 1 once Nadi reports current counts.
 - Branching: feature branches, PR into `main`. No direct pushes to `main`.
 - Branch naming: `nadi/<thing>`, `karina/<thing>`, `jack/<thing>`.
 - Each PR includes: what changed, EA-lens justification (one line), how to test.
-- Folder structure to add under `project/`:
+- Folder structure already scaffolded (see [README.md](../README.md#repository-layout) for the full tree):
 
 ```
-project/data/
+data/
   raw/             # untouched extracts (Nadi's dumps land here)
   interim/         # cleaned, dedup'd
   ground_truth/    # Karina's annotations
-  config/          # sources.yaml, country mappings
-project/docs/
-  plan.md                  # this file
-  pitch.md                 # consolidated pitch
-  architecture/            # diagrams + viewpoints + ADRs
+  config/
+    sources.yaml   # outlets per country
+docs/
+  plan.md          # this file
+  briefing.md
+  analysis_plan.md
+  pitch/           # pitch email + slide deck
+  architecture/    # context, viewpoints, ADRs
 ```
 
 - `*.csv`, `*.parquet`, `*.json` larger than ~1 MB go to a shared drive or Git LFS. Small samples in repo, big files out.
 
 ### Nadi (Data Engineering): consolidate existing extract, plan the scaled pull
 
-- Drop existing extracts into `project/data/raw/` with a `README.md` describing source, date range, row count, schema.
+- Drop existing extracts into `data/raw/` with a `README.md` describing source, date range, row count, schema.
 - Fill the `<existing>` column of the Extraction Targets table above with real numbers.
 - Compare existing schema to the documented one (`source, country_target, title, summary, url, published_at, extracted_at`). Note gaps and fields to add.
 - If data is already in a DuckDB file, copy it to a shared location and point a one-off ingestion script at it that re-writes through dlt, so the path is reproducible. `rest_api_pipeline.py` is the home for that script.
@@ -59,14 +62,14 @@ project/docs/
 
 ### Karina (Business): onboard sources, annotations, pitch material
 
-- `project/data/config/sources.yaml`: outlets per country (DE, US, IT, MM, KZ) with RSS URLs where available.
-- `project/data/ground_truth/`: hand-coded examples of narrative divergence (same event, different framing). 5 to 10 to start. Becomes the evaluation set later.
-- `project/docs/pitch.md`: refined pitch and stakeholder map. Consolidates `pitch-email.md` and the pptx.
+- `data/config/sources.yaml`: outlets per country (DE, US, IT, MM, KZ) with RSS URLs where available.
+- `data/ground_truth/`: hand-coded examples of narrative divergence (same event, different framing). 5 to 10 to start. Becomes the evaluation set later.
+- `docs/pitch/`: refined pitch and stakeholder map. Consolidates `pitch-email.md` and the pptx.
 
 ### Jack (Enterprise Architecture + RSS / MM + KZ extraction): EA scaffolding + start the Long Tail pull
 
 **EA scaffolding**
-- `project/docs/architecture/`:
+- `docs/architecture/`:
   - `00-context.md`: business problem, scope, out-of-scope.
   - `01-ea-hierarchy.md`: mission to process to data to application to technology, mapped to this project.
   - `02-viewpoints.md`: IEEE 1471 viewpoints (logical, physical, deployment, security, data).
@@ -76,7 +79,7 @@ project/docs/
 
 **Extraction (RSS + MM/KZ scrape)**
 - Pair with Karina on MM and KZ outlet discovery. Languages: Burmese, Russian (KZ media), Kazakh. Note encoding and font quirks early.
-- Write the first BeautifulSoup-based scraper as a dlt resource for one MM outlet end-to-end (proof of concept). Goal by end of Week 1: 1 MM outlet flowing into `project/data/raw/`.
+- Write the first BeautifulSoup-based scraper as a dlt resource for one MM outlet end-to-end (proof of concept). Goal by end of Week 1: 1 MM outlet flowing into `data/raw/`.
 - Document the scraping pattern in `docs/architecture/05-scraping-pattern.md` so it can be copied for the other 4 outlets.
 
 ## Week 2 (2026-06-01 to 06-08): Pipeline + storage spine + bulk extraction
@@ -84,7 +87,7 @@ project/docs/
 ### Nadi
 - `rest_api_pipeline.py`: add NewsAPI, GDELT, RSS resources. Each writes to DuckDB raw lake first.
 - **Bulk extraction**: kick off the scaled pull (target ~50% of Week 3 target by end of Week 2). Use dlt's `dlt.sources.incremental` so reruns are cheap.
-- Stand up ClickHouse locally (`docker-compose.yml` in `project/`). Single-node is fine.
+- Stand up ClickHouse locally (`docker-compose.yml` at the repo root). Single-node is fine.
 - Add a dlt destination for ClickHouse. Pattern: raw to DuckDB, modelled aggregates to ClickHouse.
 - Document secrets needed in `.dlt/secrets.toml` (NewsAPI key, GDELT, ClickHouse password).
 
@@ -166,8 +169,8 @@ project/docs/
 
 ## Immediate next actions (this week)
 
-1. **Jack**: open a PR adding the `project/data/`, `project/docs/architecture/`, and `CONTRIBUTING.md` skeleton.
-2. **Nadi**: dump existing extracts into `project/data/raw/` on a branch with a `README.md` describing source / date range / row count / schema. **Fill in the `<existing>` row of the Extraction Targets table.** Open PR.
+1. **Jack**: scaffold `data/`, `docs/architecture/`, ADRs, and `CONTRIBUTING.md`. **Done** ✓.
+2. **Nadi**: dump existing extracts into `data/raw/` on a branch with a `README.md` describing source / date range / row count / schema. **Fill in the `<existing>` row of the Extraction Targets table.** Open PR.
 3. **Nadi + Jack**: agree on Week 3 extraction target numbers in the table above (working numbers are fine, lock them by end of Week 1). Agree on the API vs RSS / scrape split (Nadi = APIs, Jack = scraping + MM/KZ).
 4. **Jack**: ship a proof-of-concept BeautifulSoup scraper for 1 MM outlet, wired as a dlt resource. Document the pattern.
 5. **Karina + Jack**: outlet discovery for MM and KZ. Karina collects candidates, Jack assesses scrapability (robots.txt, JS-rendered, paywalls, encoding).

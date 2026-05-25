@@ -31,15 +31,13 @@ Each PR includes:
 
 ## Folder layout
 
-```
-.
-├── docs/                   # team plan, architecture notes, ADRs
-├── data/                   # raw extracts, ground truth, source configs (large files via shared drive)
-├── .dlt/                   # dlt workspace (secrets.toml gitignored)
-├── rest_api_pipeline.py    # ingestion entry point
-├── gdelt_dashboard.py      # marimo dashboard
-└── requirements.txt
-```
+See [README.md](README.md#repository-layout) for the full tree. Headline:
+
+- `rest_api_pipeline.py`, `gdelt_dashboard.py` at root.
+- `data/` for extracts, ground truth, source configs. Large files go to a shared drive, samples only in repo.
+- `docs/` for plan, briefing, pitch, and `docs/architecture/` (EA artifacts + ADRs).
+- `.dlt/` for the dlt workspace (`secrets.toml` is gitignored).
+- `.github/pull_request_template.md` for the PR template.
 
 ## Working directory
 

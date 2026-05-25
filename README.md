@@ -85,16 +85,37 @@ uv run marimo edit gdelt_dashboard.py
 
 dlt resolves `.dlt/secrets.toml` and configs from cwd, so all commands run from the repo root.
 
-## Files
+## Repository layout
 
-- `rest_api_pipeline.py`: dlt ingestion pipeline (NewsAPI, GDELT, RSS).
-- `gdelt_dashboard.py`: marimo dashboard.
-- `gdelt.duckdb`: local DuckDB warehouse (gitignored, rebuildable).
-- `2026-05-08_gdelt_analysis_plan.md`: analysis plan and chart specs.
-- `pitch-email.md`, `Pitch_Deck_-_Additional_Slides.pptx`: pitch artifacts.
-- `must-read.md`: project briefing.
-- `requirements.txt`: Python deps.
-- `.dlt/`: dlt workspace (secrets gitignored).
+```
+.
+├── rest_api_pipeline.py       # dlt ingestion pipeline (NewsAPI, GDELT, RSS)
+├── gdelt_dashboard.py         # marimo dashboard
+├── requirements.txt           # Python deps
+├── .dlt/                      # dlt workspace (secrets.toml gitignored)
+│   └── config.toml
+├── data/                      # extracts and configs (large files via shared drive)
+│   ├── raw/                   # untouched extracts (NewsAPI, GDELT, RSS, scraped)
+│   ├── interim/               # cleaned, dedup'd (mostly gitignored)
+│   ├── ground_truth/          # hand-coded evaluation examples (Karina)
+│   └── config/
+│       └── sources.yaml       # outlets per country
+├── docs/
+│   ├── plan.md                # 6-week team plan
+│   ├── briefing.md            # project briefing
+│   ├── analysis_plan.md       # chart specs for the dashboard
+│   ├── pitch/                 # pitch email + slide deck
+│   └── architecture/          # EA artifacts (owned by Jack)
+│       ├── 00-context.md
+│       ├── 01-ea-hierarchy.md
+│       ├── 02-viewpoints.md
+│       └── adr/               # Architecture Decision Records
+├── .github/
+│   └── pull_request_template.md
+├── CONTRIBUTING.md
+├── LICENSE
+└── README.md
+```
 
 ## Open questions
 
