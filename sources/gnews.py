@@ -21,7 +21,9 @@ and dedups on URL via merge disposition.
 from __future__ import annotations
 
 import logging
+import os
 import time
+from concurrent.futures import ThreadPoolExecutor, as_completed
 from pathlib import Path
 from typing import Any, Iterator
 from urllib.parse import quote_plus
@@ -32,6 +34,10 @@ import yaml
 from dlt.common.pendulum import pendulum
 
 _log = logging.getLogger("gnews")
+
+# Google News is more aggressive about throttling than per-outlet RSS,
+# so default to fewer workers. Override via env if a run gets 429s.
+WORKERS = int(os.environ.get("GNEWS_WORKERS", "12"))
 
 USER_AGENT = "Mozilla/5.0 (compatible; NewsIntelBot/0.1)"
 
@@ -100,48 +106,61 @@ def _summary(entry: feedparser.FeedParserDict) -> str | None:
     return None
 
 
+def _fetch(feed: dict[str, str]):
+    """feedparser.parse with the bot UA. Runs in a worker thread."""
+    return feedparser.parse(feed["rss"], agent=USER_AGENT)
+
+
 def iter_gnews_articles() -> Iterator[dict[str, Any]]:
     """One row per Google News RSS entry across the query catalogue.
-    A single failing feed does not abort the run. Plain generator so
-    the combined pipeline can chain it with the per-outlet iterator
-    into one dlt resource."""
+    Feeds fan out across GNEWS_WORKERS threads (default 12). A single
+    failing feed does not abort the run. Plain generator so the
+    combined pipeline can chain it with the per-outlet iterator into
+    one dlt resource."""
     extracted_at = pendulum.now("UTC").to_iso8601_string()
     feeds = _load_query_catalogue()
-    _log.info("gnews: %d feeds to poll", len(feeds))
+    _log.info("gnews: %d feeds, %d workers", len(feeds), WORKERS)
     ok = bad = empty = 0
-    for feed in feeds:
-        label = feed["source"]
-        try:
-            parsed = feedparser.parse(feed["rss"], agent=USER_AGENT)
-        except Exception as exc:  # noqa: BLE001
-            _log.warning("gnews: %s -> error: %s", label, exc)
-            bad += 1
-            time.sleep(REQUEST_DELAY_S)
-            continue
-        if parsed.bozo and not parsed.entries:
-            _log.warning("gnews: %s -> empty/malformed", label)
-            empty += 1
-            time.sleep(REQUEST_DELAY_S)
-            continue
-        emitted = 0
-        for entry in parsed.entries:
-            url = entry.get("link")
-            if not url:
+    started = time.monotonic()
+    with ThreadPoolExecutor(max_workers=WORKERS) as pool:
+        futures = {pool.submit(_fetch, f): f for f in feeds}
+        for fut in as_completed(futures):
+            feed = futures[fut]
+            label = feed["source"]
+            try:
+                parsed = fut.result()
+            except Exception as exc:  # noqa: BLE001
+                _log.warning("gnews: %s -> error: %s", label, exc)
+                bad += 1
                 continue
-            emitted += 1
-            yield {
-                "source": feed["source"],
-                "country_target": feed["country_target"],
-                "title": entry.get("title"),
-                "summary": _summary(entry),
-                "url": url,
-                "published_at": _parse_published(entry),
-                "extracted_at": extracted_at,
-            }
-        ok += 1
-        _log.info("gnews: %s -> %d entries", label, emitted)
-        time.sleep(REQUEST_DELAY_S)
-    _log.info("gnews: done. ok=%d empty=%d bad=%d", ok, empty, bad)
+            if parsed.bozo and not parsed.entries:
+                _log.warning("gnews: %s -> empty/malformed", label)
+                empty += 1
+                continue
+            emitted = 0
+            for entry in parsed.entries:
+                url = entry.get("link")
+                if not url:
+                    continue
+                emitted += 1
+                yield {
+                    "source": feed["source"],
+                    "country_target": feed["country_target"],
+                    "title": entry.get("title"),
+                    "summary": _summary(entry),
+                    "url": url,
+                    "published_at": _parse_published(entry),
+                    "extracted_at": extracted_at,
+                }
+            ok += 1
+            _log.info("gnews: %s -> %d entries", label, emitted)
+    _log.info(
+        "gnews: done. ok=%d empty=%d bad=%d elapsed=%.1fs",
+        ok,
+        empty,
+        bad,
+        time.monotonic() - started,
+    )
 
 
 @dlt.resource(name="articles", primary_key="url", write_disposition="merge")
