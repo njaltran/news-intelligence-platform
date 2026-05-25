@@ -55,6 +55,27 @@ countries:
       scrape: rss
       robots_ok: unknown
       notes: "English edition. Burmese-language site needs separate scrape. Irrawaddy and Frontier Myanmar block bot UAs (403)."
+    - name: BBC Burmese
+      url: https://www.bbc.com/burmese
+      rss: https://feeds.bbci.co.uk/burmese/rss.xml
+      language: my
+      scrape: rss
+      robots_ok: unknown
+      notes: "Burmese language. BBC RSS is well-engineered and stable."
+    - name: RFA Burmese
+      url: https://www.rfa.org/burmese
+      rss: https://www.rfa.org/burmese/rss
+      language: my
+      scrape: rss
+      robots_ok: unknown
+      notes: "Burmese language. Radio Free Asia."
+    - name: Mizzima Burmese
+      url: https://www.mizzimaburmese.com/
+      rss: ""
+      language: my
+      scrape: beautifulsoup
+      robots_ok: unknown
+      notes: "No RSS on the Burmese edition. Homepage scraped via sources/scrapers/mm/mizzima_burmese.py. ~60 posts per pull."
 
   KZ:
     - name: Astana Times
@@ -63,4 +84,18 @@ countries:
       language: en
       scrape: rss
       robots_ok: unknown
-      notes: "English-language outlet. Tengri News RSS returns 404. Kazakh/Russian-language outlets still need scrape coverage."
+      notes: "English-language outlet."
+    - name: Azattyq (RFE/RL Kazakh)
+      url: https://www.azattyq.org
+      rss: https://www.azattyq.org/api/
+      language: kk
+      scrape: rss
+      robots_ok: unknown
+      notes: "Kazakh language. RFE/RL Kazakh service. Feed lives at /api/ not a normal RSS path."
+    - name: NUR.KZ
+      url: https://www.nur.kz
+      rss: https://www.nur.kz/rss/all.rss
+      language: ru
+      scrape: rss
+      robots_ok: unknown
+      notes: "Russian-language outlet covering Kazakhstan. 50 entries per feed pull."
