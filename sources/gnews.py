@@ -117,7 +117,6 @@ def iter_gnews_articles() -> Iterator[dict[str, Any]]:
     failing feed does not abort the run. Plain generator so the
     combined pipeline can chain it with the per-outlet iterator into
     one dlt resource."""
-    extracted_at = pendulum.now("UTC").to_iso8601_string()
     feeds = _load_query_catalogue()
     _log.info("gnews: %d feeds, %d workers", len(feeds), WORKERS)
     ok = bad = empty = 0
@@ -150,7 +149,7 @@ def iter_gnews_articles() -> Iterator[dict[str, Any]]:
                     "summary": _summary(entry),
                     "url": url,
                     "published_at": _parse_published(entry),
-                    "extracted_at": extracted_at,
+                    "extracted_at": pendulum.now("UTC").to_iso8601_string(),
                 }
             ok += 1
             _log.info("gnews: %s -> %d entries", label, emitted)

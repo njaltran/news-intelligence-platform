@@ -25,6 +25,7 @@ CH_USER = os.getenv("CLICKHOUSE_USER", "news")
 CH_PASSWORD = os.getenv("CLICKHOUSE_PASSWORD", "news")
 CH_DB = os.getenv("CLICKHOUSE_DATABASE", "news")
 TABLE = os.getenv("CLICKHOUSE_TABLE", "news___articles")
+SPARKLINE_WINDOW_MIN = int(os.getenv("DASHBOARD_SPARKLINE_MIN", "10"))
 
 st.set_page_config(page_title="News Intel — live feed", layout="wide")
 
@@ -54,7 +55,7 @@ if interval_s > 0:
 else:
     st.sidebar.caption("auto-refresh paused")
 
-# Always re-pull on rerun. The 30s @st.cache_data was too sticky for a
+# Always re-pull on rerun. The cached values were too sticky for a
 # live-ingest view, so the cache is cleared each tick.
 st.cache_data.clear()
 if st.sidebar.button("Refresh now"):
@@ -119,19 +120,77 @@ def fetch_by_day() -> pd.DataFrame:
     )
 
 
+@st.cache_data(ttl=2)
+def fetch_arrivals(window_min: int) -> pd.DataFrame:
+    """Per-second arrivals in the last `window_min` minutes. Drives
+    the sparkline that gives the dashboard its streaming feel."""
+    return _query(
+        f"""
+        SELECT toStartOfSecond(extracted_at) AS sec, count() AS arrivals
+        FROM {TABLE}
+        WHERE extracted_at > now() - INTERVAL {window_min} MINUTE
+        GROUP BY sec
+        ORDER BY sec
+        """
+    )
+
+
+@st.cache_data(ttl=2)
+def fetch_distinct_sources() -> set[str]:
+    df = _query(f"SELECT DISTINCT source FROM {TABLE}")
+    return set(df["source"].dropna().tolist())
+
+
 try:
     totals = fetch_totals()
 except Exception as exc:  # noqa: BLE001
     st.error(f"ClickHouse query failed: {exc}")
     st.stop()
 
-col1, col2 = st.columns(2)
-col1.metric("rows loaded", f"{int(totals['rows']):,}")
+current_rows = int(totals["rows"])
+prev_rows = st.session_state.get("prev_rows")
+delta = None if prev_rows is None else current_rows - prev_rows
+st.session_state["prev_rows"] = current_rows
+
+col1, col2, col3 = st.columns(3)
+col1.metric(
+    "rows loaded",
+    f"{current_rows:,}",
+    delta=(f"+{delta:,}" if delta and delta > 0 else None),
+)
 col2.metric("unique URLs", f"{int(totals['unique_urls']):,}")
+
+arrivals = fetch_arrivals(SPARKLINE_WINDOW_MIN)
+if not arrivals.empty:
+    last_minute = arrivals[arrivals["sec"] >= arrivals["sec"].max() - pd.Timedelta(minutes=1)]
+    rate_per_s = last_minute["arrivals"].sum() / max(len(last_minute), 1)
+    col3.metric("msgs/s (last min)", f"{rate_per_s:.1f}")
+else:
+    col3.metric("msgs/s (last min)", "0.0")
+
+# Toast on first-ever sighting of a new source. session_state seeds on
+# first refresh so the very first load does not toast every source.
+seen_sources: set[str] = st.session_state.get("seen_sources", set())
+current_sources = fetch_distinct_sources()
+if seen_sources:
+    fresh = current_sources - seen_sources
+    for src in sorted(fresh)[:6]:
+        st.toast(f"new source: {src}")
+st.session_state["seen_sources"] = current_sources
+
+st.subheader(f"Arrivals per second (last {SPARKLINE_WINDOW_MIN} min)")
+if not arrivals.empty:
+    st.line_chart(
+        arrivals.set_index("sec")["arrivals"],
+        height=180,
+        use_container_width=True,
+    )
+else:
+    st.info("No recent arrivals yet. Bring up the producer with ./scripts/dev_stack.sh.")
 
 st.subheader("By country")
 by_country = fetch_by_country()
-st.bar_chart(by_country.set_index("country_target")["articles"], height=300)
+st.bar_chart(by_country.set_index("country_target")["articles"], height=260)
 st.dataframe(by_country, use_container_width=True, hide_index=True)
 
 st.subheader("Top sources")
@@ -143,7 +202,7 @@ if not by_day.empty:
     pivot = by_day.pivot_table(
         index="day", columns="country_target", values="articles", fill_value=0
     )
-    st.line_chart(pivot, height=320)
+    st.line_chart(pivot, height=280)
 else:
     st.info("No rows with parsed published_at yet.")
 

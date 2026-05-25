@@ -67,15 +67,19 @@ PYTHONPATH=. uv run streamlit run dashboard/streamlit_app.py \
 bg_pids+=($!)
 
 # Consumer in long-lived mode so it keeps draining as the producer
-# publishes. Smaller batch flush => more frequent dashboard updates.
-CONSUMER_IDLE_TIMEOUT_S=0 CONSUMER_BATCH_FLUSH_S=2 \
+# publishes. Tight batch flush => dashboard sparkline updates feel live.
+CONSUMER_IDLE_TIMEOUT_S=0 \
+  CONSUMER_BATCH_FLUSH_S=${CONSUMER_BATCH_FLUSH_S:-0.5} \
+  CONSUMER_BATCH_MAX=${CONSUMER_BATCH_MAX:-200} \
   PYTHONPATH=. uv run python pipelines/kafka/consumer_to_clickhouse.py \
   >"$CONSUMER_LOG" 2>&1 &
 bg_pids+=($!)
 
-# Producer loops on this interval by default so the dashboard keeps
-# seeing fresh items. Override with PRODUCER_INTERVAL_S=0 for one-shot.
+# Producer loops on this interval and paces messages so the sweep
+# trickles across the window instead of bursting. 40k msgs * 7ms ~=
+# 280s, which fits inside the 300s default interval.
 PRODUCER_INTERVAL_S=${PRODUCER_INTERVAL_S:-300} \
+  PRODUCER_MSG_DELAY_MS=${PRODUCER_MSG_DELAY_MS:-7} \
   PYTHONPATH=. uv run python pipelines/kafka/producer_rss.py \
   >"$PRODUCER_LOG" 2>&1 &
 bg_pids+=($!)

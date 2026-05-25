@@ -82,8 +82,9 @@ def iter_rss_articles() -> Iterator[dict[str, Any]]:
     sources.yaml. Feeds are fetched in parallel via a ThreadPool
     (RSS_WORKERS, default 24). A single dead feed does not abort the
     run. Plain generator so the combined pipeline can chain it with
-    the Google News iterator into one dlt resource."""
-    extracted_at = pendulum.now("UTC").to_iso8601_string()
+    the Google News iterator into one dlt resource. `extracted_at` is
+    stamped at yield time so downstream dashboards can show a real
+    arrivals timeline rather than a single sweep-start spike."""
     outlets = _load_rss_outlets()
     _log.info("rss: %d outlets, %d workers", len(outlets), WORKERS)
     ok = bad = empty = 0
@@ -115,7 +116,7 @@ def iter_rss_articles() -> Iterator[dict[str, Any]]:
                     "summary": _summary(entry),
                     "url": url,
                     "published_at": _parse_published(entry),
-                    "extracted_at": extracted_at,
+                    "extracted_at": pendulum.now("UTC").to_iso8601_string(),
                 }
             ok += 1
             _log.info("rss: %s -> %d entries", label, emitted)

@@ -43,6 +43,9 @@ TOPIC = "unified_news_topic"
 BOOTSTRAP_SERVERS = "localhost:9092"
 PROGRESS_EVERY = 500
 INTERVAL_S = int(os.environ.get("PRODUCER_INTERVAL_S", "0"))
+# Sleep this many ms between messages so a sweep trickles out instead
+# of bursting. 0 = unpaced (legacy behaviour, useful when bulk-loading).
+MSG_DELAY_MS = float(os.environ.get("PRODUCER_MSG_DELAY_MS", "0"))
 
 log = get_logger("producer")
 # Hook the source loggers into the same handler so feed-level lines
@@ -63,6 +66,7 @@ def _one_sweep(producer: Producer) -> int:
     by_country: Counter[str] = Counter()
     started = time.monotonic()
     count = 0
+    delay = MSG_DELAY_MS / 1000.0
     for article in _chained_articles():
         producer.produce(
             TOPIC,
@@ -71,6 +75,8 @@ def _one_sweep(producer: Producer) -> int:
         )
         by_country[article.get("country_target") or "?"] += 1
         count += 1
+        if delay > 0:
+            time.sleep(delay)
         if count % PROGRESS_EVERY == 0:
             producer.poll(0)
             rate = count / max(time.monotonic() - started, 1e-3)
@@ -106,10 +112,11 @@ def run() -> None:
     )
 
     log.info(
-        "producing to topic=%s bootstrap=%s interval_s=%d (0 = single-shot)",
+        "producing to topic=%s bootstrap=%s interval_s=%d msg_delay_ms=%.2f",
         TOPIC,
         BOOTSTRAP_SERVERS,
         INTERVAL_S,
+        MSG_DELAY_MS,
     )
 
     sweep = 0
