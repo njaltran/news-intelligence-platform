@@ -14,6 +14,13 @@ Run from the repo root (broker + ClickHouse must be up first):
     docker compose -f infra/docker-compose.yml up -d
     uv run python pipelines/kafka/consumer_to_clickhouse.py
 
+Consumes in micro-batches so the dashboard sees rows arrive
+incrementally rather than all at once at the end. Tunables:
+
+  CONSUMER_BATCH_MAX        max msgs per dlt load (default 500)
+  CONSUMER_BATCH_FLUSH_S    seconds before flushing a partial batch (default 5)
+  CONSUMER_IDLE_TIMEOUT_S   exit after this many idle seconds (default 15, 0 = never)
+
 The dataset name `news` matches the database created by the
 clickhouse service in infra/docker-compose.yml.
 """
@@ -21,8 +28,8 @@ clickhouse service in infra/docker-compose.yml.
 from __future__ import annotations
 
 import json
+import os
 import time
-from collections.abc import Iterator
 
 import dlt
 from confluent_kafka import Consumer
@@ -34,32 +41,28 @@ TABLE = "articles"
 BOOTSTRAP_SERVERS = "localhost:9092"
 CONSUMER_GROUP = "news_loaders_clickhouse"
 
-# Stop after this many seconds with no new messages. Keeps the local
-# dev loop bounded; a real deployment would run as a long-lived daemon.
-IDLE_TIMEOUT_S = 15
-POLL_TIMEOUT_S = 1.0
+BATCH_MAX = int(os.environ.get("CONSUMER_BATCH_MAX", "500"))
+BATCH_FLUSH_S = float(os.environ.get("CONSUMER_BATCH_FLUSH_S", "5"))
+IDLE_TIMEOUT_S = int(os.environ.get("CONSUMER_IDLE_TIMEOUT_S", "15"))
+POLL_TIMEOUT_S = 0.5
 
 
-def _messages(consumer: Consumer) -> Iterator[dict]:
-    last_msg_at = time.time()
-    received_any = False
-    while True:
+def _drain_batch(consumer: Consumer) -> list[dict]:
+    """Collect up to BATCH_MAX msgs or until BATCH_FLUSH_S elapsed."""
+    batch: list[dict] = []
+    deadline = time.time() + BATCH_FLUSH_S
+    while time.time() < deadline and len(batch) < BATCH_MAX:
         msg = consumer.poll(POLL_TIMEOUT_S)
         if msg is None:
-            if received_any and (time.time() - last_msg_at > IDLE_TIMEOUT_S):
-                print(f"no messages for {IDLE_TIMEOUT_S}s, draining.")  # noqa: T201
-                return
             continue
         if msg.error():
             print(f"consumer error: {msg.error()}")  # noqa: T201
             continue
-        received_any = True
-        last_msg_at = time.time()
         try:
-            yield json.loads(msg.value().decode("utf-8"))
+            batch.append(json.loads(msg.value().decode("utf-8")))
         except json.JSONDecodeError as exc:
             print(f"skip bad message: {exc}")  # noqa: T201
-            continue
+    return batch
 
 
 def run() -> None:
@@ -80,16 +83,33 @@ def run() -> None:
         dataset_name=DATASET,
     )
 
+    last_msg_at = time.time()
+    received_any = False
+    total = 0
     try:
-        load_info = pipeline.run(
-            dlt.resource(
-                _messages(consumer),
-                name=TABLE,
-                primary_key="url",
-                write_disposition="merge",
-            )
-        )
-        print(load_info)  # noqa: T201
+        while True:
+            batch = _drain_batch(consumer)
+            if batch:
+                received_any = True
+                last_msg_at = time.time()
+                pipeline.run(
+                    dlt.resource(
+                        iter(batch),
+                        name=TABLE,
+                        primary_key="url",
+                        write_disposition="merge",
+                    )
+                )
+                total += len(batch)
+                print(f"loaded batch={len(batch)} total={total}")  # noqa: T201
+                continue
+            if (
+                IDLE_TIMEOUT_S > 0
+                and received_any
+                and (time.time() - last_msg_at) > IDLE_TIMEOUT_S
+            ):
+                print(f"no messages for {IDLE_TIMEOUT_S}s, exiting.")  # noqa: T201
+                return
     finally:
         consumer.close()
 
