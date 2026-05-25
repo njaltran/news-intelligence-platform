@@ -30,9 +30,12 @@ from __future__ import annotations
 import json
 import os
 import time
+from collections import Counter
 
 import dlt
 from confluent_kafka import Consumer
+
+from pipelines.kafka._log import get_logger
 
 TOPIC = "unified_news_topic"
 DATASET = "news"
@@ -46,6 +49,8 @@ BATCH_FLUSH_S = float(os.environ.get("CONSUMER_BATCH_FLUSH_S", "5"))
 IDLE_TIMEOUT_S = int(os.environ.get("CONSUMER_IDLE_TIMEOUT_S", "15"))
 POLL_TIMEOUT_S = 0.5
 
+log = get_logger("consumer")
+
 
 def _drain_batch(consumer: Consumer) -> list[dict]:
     """Collect up to BATCH_MAX msgs or until BATCH_FLUSH_S elapsed."""
@@ -56,12 +61,12 @@ def _drain_batch(consumer: Consumer) -> list[dict]:
         if msg is None:
             continue
         if msg.error():
-            print(f"consumer error: {msg.error()}")  # noqa: T201
+            log.error("kafka error: %s", msg.error())
             continue
         try:
             batch.append(json.loads(msg.value().decode("utf-8")))
         except json.JSONDecodeError as exc:
-            print(f"skip bad message: {exc}")  # noqa: T201
+            log.warning("skip bad message: %s", exc)
     return batch
 
 
@@ -75,7 +80,16 @@ def run() -> None:
         }
     )
     consumer.subscribe([TOPIC])
-    print(f"consuming {TOPIC} -> clickhouse.{DATASET}.{TABLE}")  # noqa: T201
+    log.info(
+        "subscribed topic=%s group=%s sink=clickhouse.%s.%s batch_max=%d flush_s=%.1f idle_timeout_s=%d",
+        TOPIC,
+        CONSUMER_GROUP,
+        DATASET,
+        TABLE,
+        BATCH_MAX,
+        BATCH_FLUSH_S,
+        IDLE_TIMEOUT_S,
+    )
 
     pipeline = dlt.pipeline(
         pipeline_name="kafka_to_clickhouse",
@@ -86,29 +100,55 @@ def run() -> None:
     last_msg_at = time.time()
     received_any = False
     total = 0
+    by_country: Counter[str] = Counter()
+    started = time.monotonic()
+
     try:
         while True:
+            batch_started = time.monotonic()
             batch = _drain_batch(consumer)
             if batch:
                 received_any = True
                 last_msg_at = time.time()
-                pipeline.run(
-                    dlt.resource(
-                        iter(batch),
-                        name=TABLE,
-                        primary_key="url",
-                        write_disposition="merge",
+                load_started = time.monotonic()
+                try:
+                    pipeline.run(
+                        dlt.resource(
+                            iter(batch),
+                            name=TABLE,
+                            primary_key="url",
+                            write_disposition="merge",
+                        )
                     )
-                )
+                except Exception:  # noqa: BLE001
+                    log.exception("dlt load failed for batch of %d", len(batch))
+                    continue
+                for row in batch:
+                    by_country[row.get("country_target") or "?"] += 1
                 total += len(batch)
-                print(f"loaded batch={len(batch)} total={total}")  # noqa: T201
+                load_s = time.monotonic() - load_started
+                elapsed = time.monotonic() - started
+                rate = total / max(elapsed, 1e-3)
+                log.info(
+                    "batch=%d load=%.2fs total=%d rate=%.0f msg/s by_country=%s",
+                    len(batch),
+                    load_s,
+                    total,
+                    rate,
+                    dict(by_country),
+                )
                 continue
             if (
                 IDLE_TIMEOUT_S > 0
                 and received_any
                 and (time.time() - last_msg_at) > IDLE_TIMEOUT_S
             ):
-                print(f"no messages for {IDLE_TIMEOUT_S}s, exiting.")  # noqa: T201
+                log.info(
+                    "no messages for %ds, exiting. total=%d elapsed=%.1fs",
+                    IDLE_TIMEOUT_S,
+                    total,
+                    time.monotonic() - started,
+                )
                 return
     finally:
         consumer.close()

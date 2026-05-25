@@ -9,6 +9,7 @@ this resource defends. Velocity is bounded by publisher cadence, so
 periodic polling is sufficient. No Kafka.
 """
 
+import logging
 from pathlib import Path
 from typing import Any, Iterator
 
@@ -16,6 +17,8 @@ import dlt
 import feedparser
 import yaml
 from dlt.common.pendulum import pendulum
+
+_log = logging.getLogger("rss")
 
 # Some publishers 403 the default feedparser UA. Identify ourselves as
 # a real-looking bot so MM/KZ outlets behind light WAFs let us through.
@@ -71,17 +74,27 @@ def iter_rss_articles() -> Iterator[dict[str, Any]]:
     generator so the combined pipeline can chain it with the Google
     News iterator into one dlt resource."""
     extracted_at = pendulum.now("UTC").to_iso8601_string()
-    for outlet in _load_rss_outlets():
+    outlets = _load_rss_outlets()
+    _log.info("rss: %d outlets to poll", len(outlets))
+    ok = bad = empty = 0
+    for outlet in outlets:
+        label = f"{outlet['country_target']}/{outlet['source']}"
         try:
             parsed = feedparser.parse(outlet["rss"], agent=USER_AGENT)
-        except Exception:
+        except Exception as exc:  # noqa: BLE001
+            _log.warning("rss: %s -> error: %s", label, exc)
+            bad += 1
             continue
         if parsed.bozo and not parsed.entries:
+            _log.warning("rss: %s -> empty/malformed", label)
+            empty += 1
             continue
+        emitted = 0
         for entry in parsed.entries:
             url = entry.get("link")
             if not url:
                 continue
+            emitted += 1
             yield {
                 "source": outlet["source"],
                 "country_target": outlet["country_target"],
@@ -91,6 +104,9 @@ def iter_rss_articles() -> Iterator[dict[str, Any]]:
                 "published_at": _parse_published(entry),
                 "extracted_at": extracted_at,
             }
+        ok += 1
+        _log.info("rss: %s -> %d entries", label, emitted)
+    _log.info("rss: done. ok=%d empty=%d bad=%d", ok, empty, bad)
 
 
 @dlt.resource(name="articles", primary_key="url", write_disposition="merge")

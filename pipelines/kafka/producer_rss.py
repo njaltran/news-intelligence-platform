@@ -24,14 +24,24 @@ from __future__ import annotations
 
 import json
 import socket
+import time
+from collections import Counter
 
 from confluent_kafka import Producer
 
+from pipelines.kafka._log import get_logger
 from sources.gnews import iter_gnews_articles
 from sources.rss import iter_rss_articles
 
 TOPIC = "unified_news_topic"
 BOOTSTRAP_SERVERS = "localhost:9092"
+PROGRESS_EVERY = 500
+
+log = get_logger("producer")
+# Hook the source loggers into the same handler so feed-level lines
+# stream alongside the producer's own.
+get_logger("rss")
+get_logger("gnews")
 
 # Bound feedparser network waits so one stuck feed cannot stall the producer.
 socket.setdefaulttimeout(20)
@@ -39,7 +49,7 @@ socket.setdefaulttimeout(20)
 
 def _delivery_report(err, _msg) -> None:
     if err is not None:
-        print(f"delivery failed: {err}")  # noqa: T201
+        log.error("delivery failed: %s", err)
 
 
 def run() -> None:
@@ -54,6 +64,10 @@ def run() -> None:
         }
     )
 
+    log.info("producing to topic=%s bootstrap=%s", TOPIC, BOOTSTRAP_SERVERS)
+    by_country: Counter[str] = Counter()
+    started = time.monotonic()
+
     count = 0
     for article in _chained_articles():
         producer.produce(
@@ -61,15 +75,27 @@ def run() -> None:
             json.dumps(article, ensure_ascii=False).encode("utf-8"),
             callback=_delivery_report,
         )
+        by_country[article.get("country_target") or "?"] += 1
         count += 1
-        # Poll periodically so delivery callbacks fire and the
-        # internal queue does not back up.
-        if count % 500 == 0:
+        if count % PROGRESS_EVERY == 0:
             producer.poll(0)
-            print(f"produced {count} messages")  # noqa: T201
+            rate = count / max(time.monotonic() - started, 1e-3)
+            log.info(
+                "produced %d msgs (%.0f msg/s) by_country=%s",
+                count,
+                rate,
+                dict(by_country),
+            )
 
     producer.flush()
-    print(f"done. produced {count} messages to {TOPIC}")  # noqa: T201
+    elapsed = time.monotonic() - started
+    log.info(
+        "done. produced=%d elapsed=%.1fs rate=%.0f msg/s by_country=%s",
+        count,
+        elapsed,
+        count / max(elapsed, 1e-3),
+        dict(by_country),
+    )
 
 
 def _chained_articles():
