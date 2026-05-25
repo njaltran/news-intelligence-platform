@@ -175,18 +175,18 @@ countries:
       notes: ""
     - name: Zeit Kultur
       url: https://www.zeit.de/kultur
-      rss: https://newsfeed.zeit.de/feuilleton/index
+      rss: https://newsfeed.zeit.de/kultur/index
       language: de
       scrape: rss
       robots_ok: unknown
-      notes: "Zeit retired /kultur/index; /feuilleton/index is the live culture feed."
+      notes: ""
     - name: Zeit Wissen
       url: https://www.zeit.de/wissen
-      rss: https://newsfeed.zeit.de/wissenschaft/index
+      rss: https://newsfeed.zeit.de/wissen/index
       language: de
       scrape: rss
       robots_ok: unknown
-      notes: "Zeit retired /wissen/index; /wissenschaft/index is the live science feed."
+      notes: ""
     - name: Zeit Sport
       url: https://www.zeit.de/sport
       rss: https://newsfeed.zeit.de/sport/index

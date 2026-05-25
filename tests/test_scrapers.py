@@ -10,6 +10,9 @@ import requests
 from bs4 import BeautifulSoup
 
 from sources.scrapers._base import Scraper
+from sources.scrapers.mm.news_eleven import NewsElevenScraper
+
+FIXTURES = Path(__file__).parent / "fixtures"
 
 
 def test_parse_article_default_returns_empty():
@@ -86,11 +89,6 @@ def test_run_merges_article_fields(monkeypatch):
         assert row["source"] == "fake"
         assert row["country_target"] == "XX"
         assert "extracted_at" in row
-
-
-from sources.scrapers.mm.news_eleven import NewsElevenScraper
-
-FIXTURES = Path(__file__).parent / "fixtures"
 
 
 def test_news_eleven_parse_article_extracts_summary():
