@@ -24,7 +24,7 @@ Sources (NewsAPI, GDELT, RSS, scraping)
 
 **Storage split.** DuckDB is the local raw lake: cheap, embedded, dev-friendly. ClickHouse is the analytical warehouse: columnar with MPP execution, sized for sub-second aggregations over the modelled tables (country x topic x time) that back the dashboard.
 
-**Streaming path.** Producers (NewsAPI, BBC, native-language scrapers) publish standardised articles to a single Kafka topic. A dlt consumer drains the topic into DuckDB with schema inference. This is the **Kappa** arm; the batch RSS / GDELT arm is the Lambda complement for outlets that only expose batch interfaces. See [`pipelines/kafka/`](pipelines/kafka/) and [`infra/docker-compose.yml`](infra/docker-compose.yml).
+**Streaming path.** Producers (NewsAPI, BBC, RSS + Google News, native-language scrapers) publish standardised articles to a single Kafka topic. A dlt consumer drains the topic into ClickHouse (or DuckDB for local debugging) with schema inference. This is the **Kappa** arm; the batch RSS / GDELT arm is the Lambda complement for outlets that only expose batch interfaces. See [`pipelines/kafka/`](pipelines/kafka/) and [`infra/docker-compose.yml`](infra/docker-compose.yml).
 
 ## Stack
 
@@ -75,17 +75,21 @@ cd news-intelligence-platform
 uv venv
 uv pip install -r requirements.txt
 
-# configure dlt secrets
-# edit .dlt/secrets.toml with NewsAPI key, GDELT credentials, ClickHouse password
+# configure dlt secrets (template in .dlt/secrets.toml.example)
+cp .dlt/secrets.toml.example .dlt/secrets.toml
+# edit with NewsAPI key, GDELT credentials, ClickHouse password
 
-# run ingestion (PYTHONPATH=. so pipelines/ can import sources/)
+# bring up local infra (Kafka broker + ClickHouse server)
+docker compose -f infra/docker-compose.yml up -d
+
+# run batch ingestion (PYTHONPATH=. so pipelines/ can import sources/)
 PYTHONPATH=. uv run python pipelines/ingest_apis.py
 PYTHONPATH=. uv run python pipelines/ingest_rss.py
 
-# streaming path (separate terminals; see pipelines/kafka/README.md)
-docker compose -f infra/docker-compose.yml up -d
-PYTHONPATH=. uv run python pipelines/kafka/consumer_to_duckdb.py
-PYTHONPATH=. uv run python pipelines/kafka/producer_newsapi.py
+# streaming path (separate terminals; see pipelines/kafka/README.md).
+# Consumer first so producers' early messages land.
+PYTHONPATH=. uv run python pipelines/kafka/consumer_to_clickhouse.py
+PYTHONPATH=. uv run python pipelines/kafka/producer_rss.py
 
 # launch dashboard
 uv run marimo edit dashboard/app.py
@@ -100,7 +104,8 @@ dlt resolves `.dlt/secrets.toml` and configs from cwd, so all commands run from 
 ├── sources/                   # dlt @source / @resource per data source
 │   ├── newsapi.py             # NewsAPI                            (Nadi)
 │   ├── gdelt.py               # GDELT                              (Nadi)
-│   ├── rss.py                 # RSS feeds                          (Nadi)
+│   ├── rss.py                 # curated per-outlet RSS feeds       (Nadi)
+│   ├── gnews.py               # Google News RSS (Variety amplifier)
 │   └── scrapers/              # BeautifulSoup scrapers as dlt resources
 │       ├── _base.py
 │       ├── mm/                # Myanmar outlets                    (Jack)

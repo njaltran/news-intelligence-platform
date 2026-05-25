@@ -19,7 +19,9 @@ Owned by Nadi. Originally prototyped in [`nadikyaw/Enterprise_Architecture_BigDa
 | `producer_newsapi.py` | NewsAPI: top-headlines for US/DE/IT, `everything` keyword search for MM/KZ. |
 | `producer_bbc.py` | BBC search results across all five countries (English-language outside view). |
 | `producer_local_scrapers.py` | Hybrid HTML + RSS scraping across 11 native outlets. |
+| `producer_rss.py` | Curated section feeds + Google News topic / search RSS. Reuses `sources/rss.py` + `sources/gnews.py`. ~40k messages per run. |
 | `consumer_to_duckdb.py` | Kafka consumer + dlt pipeline. Lands every message in `news_articles` table in DuckDB. |
+| `consumer_to_clickhouse.py` | Kafka consumer + dlt pipeline targeting the ClickHouse DWH (`news.news___articles`). Production path. |
 
 All producers publish to topic `unified_news_topic` with the unified message schema (`source`, `country_target`, `title`, `url`, `summary`, `published_at`, `extracted_at`). dlt infers the table schema from these messages.
 
@@ -49,13 +51,24 @@ All producers publish to topic `unified_news_topic` with the unified message sch
 Open two terminals. Consumer first so producers' early messages land:
 
 ```bash
-# Terminal 1: consumer (stops after 10s of silence)
-uv run python pipelines/kafka/consumer_to_duckdb.py
+# Terminal 1: consumer (stops after 15s of silence). Pick the
+# destination you want; both consume the same topic.
+PYTHONPATH=. uv run python pipelines/kafka/consumer_to_clickhouse.py
+# or, for local debugging only:
+PYTHONPATH=. uv run python pipelines/kafka/consumer_to_duckdb.py
 
 # Terminal 2: any/all producers
+PYTHONPATH=. uv run python pipelines/kafka/producer_rss.py
 uv run python pipelines/kafka/producer_newsapi.py
 uv run python pipelines/kafka/producer_bbc.py
 uv run python pipelines/kafka/producer_local_scrapers.py
+```
+
+Verify a clickhouse load:
+
+```bash
+docker exec infra-clickhouse-1 clickhouse-client --user news --password news \
+  -q "SELECT count(), uniqExact(url) FROM news.news___articles"
 ```
 
 Tear down:

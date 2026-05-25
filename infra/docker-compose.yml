@@ -17,3 +17,29 @@ services:
       KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://localhost:9092
       KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
       KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: PLAINTEXT:PLAINTEXT
+
+  # Analytical DWH. Columnar + MPP per Watson 2014 / project CLAUDE.md.
+  # Backs the marimo dashboard with sub-second aggregations across the
+  # modelled tables. Native TCP on 9000 for dlt, HTTP on 8123 for
+  # ad-hoc clients (clickhouse-client, dashboards).
+  clickhouse:
+    image: clickhouse/clickhouse-server:24.3
+    ports:
+      - "8123:8123"
+      - "9000:9000"
+    environment:
+      CLICKHOUSE_DB: news
+      CLICKHOUSE_USER: news
+      CLICKHOUSE_PASSWORD: news
+      CLICKHOUSE_DEFAULT_ACCESS_MANAGEMENT: 1
+    ulimits:
+      nofile:
+        soft: 262144
+        hard: 262144
+    volumes:
+      - clickhouse_data:/var/lib/clickhouse
+      - clickhouse_logs:/var/log/clickhouse-server
+
+volumes:
+  clickhouse_data:
+  clickhouse_logs:
