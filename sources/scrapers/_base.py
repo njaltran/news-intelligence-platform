@@ -45,6 +45,19 @@ class Scraper:
         backfill."""
         return {}
 
+    def fetch_article(self, url: str) -> dict[str, Any]:
+        """Fetch one article page and return parsed fields.
+
+        On any requests.RequestException returns {}. Other exceptions
+        propagate. Sleeps request_delay_s after a successful fetch.
+        """
+        try:
+            html = self.fetch(url)
+        except requests.RequestException:
+            return {}
+        time.sleep(self.request_delay_s)
+        return self.parse_article(BeautifulSoup(html, "html.parser"))
+
     def run(self) -> Iterator[dict[str, Any]]:
         """Fetch homepage, parse, normalise to project schema."""
         extracted_at = pendulum.now("UTC").to_iso8601_string()
