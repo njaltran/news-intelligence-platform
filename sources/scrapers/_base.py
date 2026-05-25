@@ -39,6 +39,12 @@ class Scraper:
         contain at minimum `url` and `title`. Override per outlet."""
         raise NotImplementedError
 
+    def parse_article(self, soup: BeautifulSoup) -> dict[str, Any]:
+        """Parse a single article page. Override per outlet.
+        Default returns {} so subclasses can opt out of article-page
+        backfill."""
+        return {}
+
     def run(self) -> Iterator[dict[str, Any]]:
         """Fetch homepage, parse, normalise to project schema."""
         extracted_at = pendulum.now("UTC").to_iso8601_string()
