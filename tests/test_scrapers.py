@@ -98,3 +98,20 @@ def test_news_eleven_parse_article_extracts_summary():
     summary = fields.get("summary")
     assert summary is not None
     assert len(summary.strip()) > 20
+
+
+def test_news_eleven_parse_prefers_text_anchor_over_image_anchor():
+    """If the homepage has two anchors for the same URL (one image-only,
+    one text headline), parse() should keep the text title."""
+    html = """
+    <html><body>
+      <a href="https://news-eleven.com/article/9999"><img src="t.jpg"/></a>
+      <a href="https://news-eleven.com/article/9999">Headline text</a>
+      <a href="https://news-eleven.com/article/8888">Solo headline</a>
+    </body></html>
+    """
+    rows = NewsElevenScraper().parse(BeautifulSoup(html, "html.parser"))
+    by_url = {row["url"]: row["title"] for row in rows}
+    assert by_url["https://news-eleven.com/article/9999"] == "Headline text"
+    assert by_url["https://news-eleven.com/article/8888"] == "Solo headline"
+    assert len(rows) == 2

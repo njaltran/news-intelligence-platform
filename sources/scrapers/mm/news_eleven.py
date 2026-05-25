@@ -25,19 +25,27 @@ class NewsElevenScraper(Scraper):
     request_delay_s = 1.0
 
     def parse(self, soup: BeautifulSoup) -> list[dict[str, Any]]:
-        """Pull article anchors from the homepage, dedupe by URL."""
-        rows: list[dict[str, Any]] = []
-        seen: set[str] = set()
+        """Pull article anchors from the homepage, dedupe by URL.
+
+        News Eleven typically renders two anchors per article: an
+        image-only wrapper and a text-only headline link. Walk every
+        anchor first, then keep the best title we saw for each URL
+        (non-empty wins; first non-empty wins on tie).
+        """
+        titles_by_url: dict[str, str | None] = {}
         for anchor in soup.find_all("a", href=True):
             url = anchor["href"]
-            if not ARTICLE_HREF_RE.match(url) or url in seen:
+            if not ARTICLE_HREF_RE.match(url):
                 continue
-            seen.add(url)
             title = anchor.get_text(strip=True) or None
-            rows.append({"url": url, "title": title})
-            if len(rows) >= MAX_HOMEPAGE_LINKS:
+            existing = titles_by_url.get(url, "__missing__")
+            if existing == "__missing__":
+                titles_by_url[url] = title
+            elif existing is None and title is not None:
+                titles_by_url[url] = title
+            if len(titles_by_url) >= MAX_HOMEPAGE_LINKS:
                 break
-        return rows
+        return [{"url": url, "title": title} for url, title in titles_by_url.items()]
 
     def parse_article(self, soup: BeautifulSoup) -> dict[str, Any]:
         """Pull the article summary from the article page itself.
