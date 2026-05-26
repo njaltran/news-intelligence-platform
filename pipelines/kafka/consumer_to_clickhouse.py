@@ -35,6 +35,7 @@ from collections import Counter
 
 import dlt
 from confluent_kafka import Consumer
+from dlt.destinations.adapters import clickhouse_adapter
 
 from pipelines.kafka._log import get_logger
 
@@ -128,11 +129,14 @@ def run() -> None:
                 last_msg_at = time.time()
                 load_started = time.monotonic()
                 pipeline.run(
-                    dlt.resource(
-                        iter(batch),
-                        name=TABLE,
-                        primary_key="url",
-                        write_disposition="merge",
+                    clickhouse_adapter(
+                        dlt.resource(
+                            iter(batch),
+                            name=TABLE,
+                            write_disposition="append",
+                        ),
+                        table_engine_type="replacing_merge_tree",
+                        sort=["url"],
                     )
                 )
                 for row in batch:

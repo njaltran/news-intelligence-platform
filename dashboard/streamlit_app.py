@@ -48,6 +48,8 @@ def client():
     # queries to a single ClickHouse session. Streamlit autorefresh can
     # fire overlapping script reruns; without this flag, clickhouse-connect
     # raises "concurrent queries within the same session".
+    # final=1 dedups ReplacingMergeTree on read so the consumer can
+    # append blindly. Without this, repeated URLs would be counted twice.
     return clickhouse_connect.get_client(
         host=CH_HOST,
         port=CH_PORT,
@@ -55,6 +57,7 @@ def client():
         password=CH_PASSWORD,
         database=CH_DB,
         autogenerate_session_id=False,
+        settings={"final": 1},
     )
 
 
