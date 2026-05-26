@@ -1,6 +1,13 @@
 beautifulsoup4>=4.12.3
-dlt[duckdb]>=1.26.0
+clickhouse-connect>=0.7
+confluent-kafka>=2.5.0
+dlt[clickhouse,duckdb]>=1.26.0
 feedparser>=6.0.11
 lxml>=5.2.0
+pandas>=2
 pyyaml>=6.0.2
 requests>=2.32.0
+streamlit>=1.36
+streamlit-autorefresh>=1.0
+pytest>=8
+trafilatura>=2.0

@@ -337,6 +337,146 @@ countries:
       robots_ok: unknown
       notes: ""
 
+    # Government + press-wire RSS. Primary-source releases the news
+    # outlets all cite. Frame as the [[Veracity]] anchor.
+    - name: Bundesregierung Aktuelles
+      url: https://www.bundesregierung.de/breg-de/aktuelles
+      rss: https://www.bundesregierung.de/breg-de/aktuelles?format=rss
+      language: de
+      scrape: rss
+      robots_ok: unknown
+      notes: "Government press releases."
+    - name: Bundestag Aktuell
+      url: https://www.bundestag.de
+      rss: https://www.bundestag.de/static/appdata/includes/rss/topthema.rss
+      language: de
+      scrape: rss
+      robots_ok: unknown
+      notes: "Parliament news feed."
+    - name: Auswärtiges Amt
+      url: https://www.auswaertiges-amt.de
+      rss: https://www.auswaertiges-amt.de/blueprint/servlet/blob/2122384/feed
+      language: de
+      scrape: rss
+      robots_ok: unknown
+      notes: "Foreign ministry press feed."
+
+    # Extra outlets. Direct RSS so we lean less on Google News.
+    - name: Bild Top
+      url: https://www.bild.de
+      rss: https://www.bild.de/feed/alles.xml
+      language: de
+      scrape: rss
+      robots_ok: unknown
+      notes: "Largest German tabloid; high-volume."
+    - name: Tagesspiegel Top
+      url: https://www.tagesspiegel.de
+      rss: https://www.tagesspiegel.de/contentexport/feed/home
+      language: de
+      scrape: rss
+      robots_ok: unknown
+      notes: ""
+    - name: Tagesspiegel Politik
+      url: https://www.tagesspiegel.de/politik
+      rss: https://www.tagesspiegel.de/contentexport/feed/politik
+      language: de
+      scrape: rss
+      robots_ok: unknown
+      notes: ""
+    - name: NDR Top
+      url: https://www.ndr.de
+      rss: https://www.ndr.de/home/index-rss.xml
+      language: de
+      scrape: rss
+      robots_ok: unknown
+      notes: "Northern Germany public broadcaster (RDF/RSS 1.0)."
+    - name: MDR Aktuell
+      url: https://www.mdr.de/nachrichten
+      rss: https://www.mdr.de/nachrichten/index-rss.xml
+      language: de
+      scrape: rss
+      robots_ok: unknown
+      notes: "Central Germany public broadcaster."
+    - name: WDR Top
+      url: https://www1.wdr.de
+      rss: https://www1.wdr.de/uebersicht-100.feed
+      language: de
+      scrape: rss
+      robots_ok: unknown
+      notes: "Western Germany public broadcaster."
+    - name: ZDF Nachrichten
+      url: https://www.zdf.de/nachrichten
+      rss: https://www.zdf.de/rss/zdf/nachrichten
+      language: de
+      scrape: rss
+      robots_ok: unknown
+      notes: "ZDF national broadcaster news feed."
+    - name: Deutschlandfunk Nachrichten
+      url: https://www.deutschlandfunk.de/nachrichten-100.html
+      rss: https://www.deutschlandfunk.de/nachrichten-100.rss
+      language: de
+      scrape: rss
+      robots_ok: unknown
+      notes: "Public radio rolling news."
+    - name: Berliner Zeitung
+      url: https://www.berliner-zeitung.de
+      rss: https://www.berliner-zeitung.de/feed.id_news.xml
+      language: de
+      scrape: rss
+      robots_ok: unknown
+      notes: ""
+    - name: Junge Welt
+      url: https://www.jungewelt.de
+      rss: https://www.jungewelt.de/feeds/newsticker.rss
+      language: de
+      scrape: rss
+      robots_ok: unknown
+      notes: "Left-leaning daily; adds framing variety."
+    - name: Manager Magazin
+      url: https://www.manager-magazin.de
+      rss: https://www.manager-magazin.de/news/index.rss
+      language: de
+      scrape: rss
+      robots_ok: unknown
+      notes: ""
+    - name: Wirtschaftswoche
+      url: https://www.wiwo.de
+      rss: https://www.wiwo.de/contentexport/feed/rss/schlagzeilen
+      language: de
+      scrape: rss
+      robots_ok: unknown
+      notes: ""
+    - name: Cicero
+      url: https://www.cicero.de
+      rss: https://www.cicero.de/rss.xml
+      language: de
+      scrape: rss
+      robots_ok: unknown
+      notes: "Right-of-centre political monthly; framing variety."
+    - name: Telepolis
+      url: https://www.telepolis.de
+      rss: https://www.telepolis.de/news-atom.xml
+      language: de
+      scrape: rss
+      robots_ok: unknown
+      notes: "Heise tech/politics; Atom feed."
+
+    # Reddit DE subs. Anglo-German diaspora discourse on German topics.
+    - name: r/germany
+      url: https://www.reddit.com/r/germany
+      rss: https://www.reddit.com/r/germany/.rss
+      language: en
+      scrape: rss
+      robots_ok: unknown
+      notes: "Reddit may UA-block; iterator drops dead feeds gracefully."
+    - name: r/de
+      url: https://www.reddit.com/r/de
+      rss: https://www.reddit.com/r/de/.rss
+      language: de
+      scrape: rss
+      robots_ok: unknown
+      notes: ""
+
   US:
     # NYT section feeds.
     - name: NYT World
@@ -723,6 +863,209 @@ countries:
       robots_ok: unknown
       notes: "AP RSS gone; Google News proxy."
 
+    # Government + press-wire RSS. Primary-source releases that
+    # downstream outlets cite. Veracity anchor.
+    - name: White House
+      url: https://www.whitehouse.gov
+      rss: https://www.whitehouse.gov/feed/
+      language: en
+      scrape: rss
+      robots_ok: unknown
+      notes: "Executive branch press releases."
+    - name: State Department Press
+      url: https://www.state.gov/press-releases
+      rss: https://www.state.gov/press-releases/feed/
+      language: en
+      scrape: rss
+      robots_ok: unknown
+      notes: "State Department press feed."
+    - name: DoD News
+      url: https://www.defense.gov/News
+      rss: https://www.defense.gov/DesktopModules/ArticleCS/RSS.ashx?ContentType=1&Site=945&max=20
+      language: en
+      scrape: rss
+      robots_ok: unknown
+      notes: "Pentagon news."
+    - name: Federal Reserve Press
+      url: https://www.federalreserve.gov/newsevents/pressreleases.htm
+      rss: https://www.federalreserve.gov/feeds/press_all.xml
+      language: en
+      scrape: rss
+      robots_ok: unknown
+      notes: "Fed press releases."
+    - name: PR Newswire All
+      url: https://www.prnewswire.com
+      rss: https://www.prnewswire.com/rss/news-releases-list.rss
+      language: en
+      scrape: rss
+      robots_ok: unknown
+      notes: "Generic newswire. High volume, broad topics."
+    - name: Business Wire Top
+      url: https://www.businesswire.com
+      rss: https://feed.businesswire.com/rss/home/?rss=G1QFDERJXkJaGVtVUw==
+      language: en
+      scrape: rss
+      robots_ok: unknown
+      notes: "Corporate press releases."
+    - name: GlobeNewswire
+      url: https://www.globenewswire.com
+      rss: https://www.globenewswire.com/RssFeed/orgclass/1/feedTitle/GlobeNewswire%20-%20News%20about%20Public%20Companies
+      language: en
+      scrape: rss
+      robots_ok: unknown
+      notes: "Public company releases."
+
+    # Extra outlets. Direct RSS so we lean less on Google News.
+    - name: NBC News Top
+      url: https://www.nbcnews.com
+      rss: https://feeds.nbcnews.com/nbcnews/public/news
+      language: en
+      scrape: rss
+      robots_ok: unknown
+      notes: ""
+    - name: NBC News World
+      url: https://www.nbcnews.com/world
+      rss: https://feeds.nbcnews.com/nbcnews/public/world
+      language: en
+      scrape: rss
+      robots_ok: unknown
+      notes: ""
+    - name: NBC News US
+      url: https://www.nbcnews.com/us-news
+      rss: https://feeds.nbcnews.com/nbcnews/public/us-news
+      language: en
+      scrape: rss
+      robots_ok: unknown
+      notes: ""
+    - name: NBC News Politics
+      url: https://www.nbcnews.com/politics
+      rss: https://feeds.nbcnews.com/nbcnews/public/politics
+      language: en
+      scrape: rss
+      robots_ok: unknown
+      notes: ""
+    - name: CNBC Top
+      url: https://www.cnbc.com
+      rss: https://www.cnbc.com/id/100003114/device/rss/rss.html
+      language: en
+      scrape: rss
+      robots_ok: unknown
+      notes: ""
+    - name: CNBC Business
+      url: https://www.cnbc.com/business
+      rss: https://www.cnbc.com/id/10001147/device/rss/rss.html
+      language: en
+      scrape: rss
+      robots_ok: unknown
+      notes: ""
+    - name: PBS NewsHour
+      url: https://www.pbs.org/newshour
+      rss: https://www.pbs.org/newshour/feeds/rss/headlines
+      language: en
+      scrape: rss
+      robots_ok: unknown
+      notes: "Public broadcasting; longform framing variety."
+    - name: Vox Top
+      url: https://www.vox.com
+      rss: https://www.vox.com/rss/index.xml
+      language: en
+      scrape: rss
+      robots_ok: unknown
+      notes: "Explanatory journalism."
+    - name: The Verge
+      url: https://www.theverge.com
+      rss: https://www.theverge.com/rss/index.xml
+      language: en
+      scrape: rss
+      robots_ok: unknown
+      notes: "Tech-policy framing."
+    - name: Wired Top
+      url: https://www.wired.com
+      rss: https://www.wired.com/feed/rss
+      language: en
+      scrape: rss
+      robots_ok: unknown
+      notes: ""
+    - name: The Atlantic
+      url: https://www.theatlantic.com
+      rss: https://www.theatlantic.com/feed/all/
+      language: en
+      scrape: rss
+      robots_ok: unknown
+      notes: "Longform analysis."
+    - name: ProPublica
+      url: https://www.propublica.org
+      rss: https://www.propublica.org/feeds/propublica/main
+      language: en
+      scrape: rss
+      robots_ok: unknown
+      notes: "Investigative non-profit."
+    - name: Mother Jones
+      url: https://www.motherjones.com
+      rss: https://www.motherjones.com/feed/
+      language: en
+      scrape: rss
+      robots_ok: unknown
+      notes: "Left framing variety."
+    - name: The Intercept
+      url: https://theintercept.com
+      rss: https://theintercept.com/feed/?lang=en
+      language: en
+      scrape: rss
+      robots_ok: unknown
+      notes: "National-security investigative."
+
+    # Reddit + Hacker News. US-default English audience.
+    - name: r/worldnews
+      url: https://www.reddit.com/r/worldnews
+      rss: https://www.reddit.com/r/worldnews/.rss
+      language: en
+      scrape: rss
+      robots_ok: unknown
+      notes: "Reddit may UA-block; iterator drops dead feeds gracefully."
+    - name: r/news
+      url: https://www.reddit.com/r/news
+      rss: https://www.reddit.com/r/news/.rss
+      language: en
+      scrape: rss
+      robots_ok: unknown
+      notes: ""
+    - name: r/politics
+      url: https://www.reddit.com/r/politics
+      rss: https://www.reddit.com/r/politics/.rss
+      language: en
+      scrape: rss
+      robots_ok: unknown
+      notes: ""
+    - name: r/Economics
+      url: https://www.reddit.com/r/Economics
+      rss: https://www.reddit.com/r/Economics/.rss
+      language: en
+      scrape: rss
+      robots_ok: unknown
+      notes: ""
+    - name: r/geopolitics
+      url: https://www.reddit.com/r/geopolitics
+      rss: https://www.reddit.com/r/geopolitics/.rss
+      language: en
+      scrape: rss
+      robots_ok: unknown
+      notes: ""
+    - name: Hacker News Frontpage
+      url: https://news.ycombinator.com
+      rss: https://hnrss.org/frontpage
+      language: en
+      scrape: rss
+      robots_ok: unknown
+      notes: "HN top stories via hnrss.org mirror."
+    - name: Hacker News Newest
+      url: https://news.ycombinator.com/newest
+      rss: https://hnrss.org/newest
+      language: en
+      scrape: rss
+      robots_ok: unknown
+      notes: "HN new submissions."
+
   IT:
     # ANSA section feeds.
     - name: ANSA Top
@@ -970,6 +1313,89 @@ countries:
       robots_ok: unknown
       notes: ""
 
+    # Government + institutional RSS.
+    - name: Governo Italiano Comunicati
+      url: https://www.governo.it/it/articolo-feed/4
+      rss: https://www.governo.it/it/articolo-feed/4
+      language: it
+      scrape: rss
+      robots_ok: unknown
+      notes: "Palazzo Chigi press releases."
+    - name: Quirinale Comunicati
+      url: https://www.quirinale.it
+      rss: https://www.quirinale.it/feed/rss
+      language: it
+      scrape: rss
+      robots_ok: unknown
+      notes: "Presidency communiqués."
+    - name: Camera dei Deputati
+      url: https://www.camera.it
+      rss: https://www.camera.it/leg19/RssNews.xml
+      language: it
+      scrape: rss
+      robots_ok: unknown
+      notes: "Lower-house news."
+    - name: Senato della Repubblica
+      url: https://www.senato.it
+      rss: https://www.senato.it/comunicati/feed
+      language: it
+      scrape: rss
+      robots_ok: unknown
+      notes: "Senate press feed."
+
+    # Extra outlets. Direct RSS so we lean less on Google News.
+    - name: Il Post
+      url: https://www.ilpost.it
+      rss: https://www.ilpost.it/feed
+      language: it
+      scrape: rss
+      robots_ok: unknown
+      notes: "High-volume; UA-sensitive (use browser UA in body fetch)."
+    - name: Open Online
+      url: https://www.open.online
+      rss: https://www.open.online/feed/
+      language: it
+      scrape: rss
+      robots_ok: unknown
+      notes: ""
+    - name: Linkiesta
+      url: https://www.linkiesta.it
+      rss: https://www.linkiesta.it/feed/
+      language: it
+      scrape: rss
+      robots_ok: unknown
+      notes: "Centrist analysis."
+    - name: Today.it
+      url: https://www.today.it
+      rss: https://www.today.it/rss
+      language: it
+      scrape: rss
+      robots_ok: unknown
+      notes: "Local-news aggregator network."
+    - name: Il Manifesto
+      url: https://ilmanifesto.it
+      rss: https://ilmanifesto.it/feed
+      language: it
+      scrape: rss
+      robots_ok: unknown
+      notes: "Left daily; framing variety."
+
+    # Reddit IT subs.
+    - name: r/italy
+      url: https://www.reddit.com/r/italy
+      rss: https://www.reddit.com/r/italy/.rss
+      language: en
+      scrape: rss
+      robots_ok: unknown
+      notes: "Mostly EN diaspora discourse on IT topics."
+    - name: r/Italia
+      url: https://www.reddit.com/r/Italia
+      rss: https://www.reddit.com/r/Italia/.rss
+      language: it
+      scrape: rss
+      robots_ok: unknown
+      notes: "Italian-language IT sub."
+
   MM:
     # Long Tail — many MM outlets block bot UAs or have no RSS. Keep
     # working feeds, supplement via Google News MM search queries
@@ -995,13 +1421,14 @@ countries:
       scrape: rss
       robots_ok: unknown
       notes: "Radio Free Asia."
-    - name: DVB Burmese
-      url: https://burmese.dvb.no
-      rss: https://burmese.dvb.no/feed
-      language: my
-      scrape: rss
-      robots_ok: unknown
-      notes: "Democratic Voice of Burma."
+    # Disabled 2026-05-25: burmese.dvb.no is now a React SPA, no /feed or /rss endpoint exists. DVB English still works (see below).
+    # - name: DVB Burmese
+    #   url: https://burmese.dvb.no
+    #   rss: https://burmese.dvb.no/feed
+    #   language: my
+    #   scrape: rss
+    #   robots_ok: unknown
+    #   notes: "Democratic Voice of Burma."
     - name: DVB English
       url: https://english.dvb.no
       rss: https://english.dvb.no/feed
@@ -1016,16 +1443,17 @@ countries:
       scrape: rss
       robots_ok: unknown
       notes: "Independent Burmese outlet."
-    - name: Irrawaddy (EN)
-      url: https://www.irrawaddy.com
-      rss: https://www.irrawaddy.com/feed
-      language: en
-      scrape: rss
-      robots_ok: unknown
-      notes: "Bot UA sometimes blocked; identify as browser UA."
+    # Disabled 2026-05-25: Cloudflare bot challenge blocks both project bot UA and real browser UA. Coverage available via Google News MM queries.
+    # - name: Irrawaddy (EN)
+    #   url: https://www.irrawaddy.com
+    #   rss: https://www.irrawaddy.com/feed
+    #   language: en
+    #   scrape: rss
+    #   robots_ok: unknown
+    #   notes: "Bot UA sometimes blocked; identify as browser UA."
     - name: VOA Burmese
       url: https://burmese.voanews.com
-      rss: https://burmese.voanews.com/api/zo$omeyiyt
+      rss: https://burmese.voanews.com/api/
       language: my
       scrape: rss
       robots_ok: unknown
@@ -1043,7 +1471,79 @@ countries:
       language: my
       scrape: beautifulsoup
       robots_ok: unknown
-      notes: "No RSS on Burmese edition. Scraped via mizzima_burmese.py."
+      notes: "No RSS on Burmese edition. Cloudflare-blocks plain HTTP fetches as of 2026-05-25. mizzima_burmese.py stays in tree, currently unwired."
+    - name: Eleven Media Burmese
+      url: https://news-eleven.com/
+      rss: ""
+      language: my
+      scrape: beautifulsoup
+      robots_ok: unknown
+      notes: "No RSS. Scraped via news_eleven.py."
+
+    # International press-wire + NGO RSS. MM-domestic gov press is
+    # junta-controlled so we lean on diaspora wires and human-rights
+    # outlets that act as primary-source proxies.
+    - name: HRW Asia Myanmar
+      url: https://www.hrw.org/asia/burma
+      rss: https://www.hrw.org/feed/asia/burma/rss.xml
+      language: en
+      scrape: rss
+      robots_ok: unknown
+      notes: "Human Rights Watch Myanmar tag."
+    - name: UN OCHA Myanmar (via Google News)
+      url: https://www.unocha.org/myanmar
+      rss: https://news.google.com/rss/search?q=site:reliefweb.int+myanmar&hl=en-US&gl=US&ceid=US:en
+      language: en
+      scrape: rss
+      robots_ok: unknown
+      notes: "ReliefWeb MM updates via Google News proxy."
+
+    # Regional/Asia outlets that cover Myanmar prominently. Direct RSS
+    # reduces dependence on the Google News MM proxies.
+    - name: Burma News International
+      url: https://www.bnionline.net
+      rss: https://www.bnionline.net/en/rss.xml
+      language: en
+      scrape: rss
+      robots_ok: unknown
+      notes: "Network of ethnic/independent Myanmar outlets."
+    - name: Asia Times
+      url: https://asiatimes.com
+      rss: https://asiatimes.com/feed/
+      language: en
+      scrape: rss
+      robots_ok: unknown
+      notes: "Asia-wide; MM-heavy coverage. Filter downstream."
+    - name: Channel News Asia
+      url: https://www.channelnewsasia.com
+      rss: https://www.channelnewsasia.com/rssfeeds/8395986
+      language: en
+      scrape: rss
+      robots_ok: unknown
+      notes: "Asia regional feed; MM coverage."
+    - name: Bangkok Post Top
+      url: https://www.bangkokpost.com
+      rss: https://www.bangkokpost.com/rss/data/topstories.xml
+      language: en
+      scrape: rss
+      robots_ok: unknown
+      notes: "Thai daily; cross-border MM coverage."
+
+    # Reddit MM diaspora discourse.
+    - name: r/myanmar
+      url: https://www.reddit.com/r/myanmar
+      rss: https://www.reddit.com/r/myanmar/.rss
+      language: en
+      scrape: rss
+      robots_ok: unknown
+      notes: "Diaspora + English discussion."
+    - name: r/Burma
+      url: https://www.reddit.com/r/Burma
+      rss: https://www.reddit.com/r/Burma/.rss
+      language: en
+      scrape: rss
+      robots_ok: unknown
+      notes: ""
 
   KZ:
     - name: Astana Times
@@ -1081,48 +1581,54 @@ countries:
       scrape: rss
       robots_ok: unknown
       notes: "Kazakh language. Feed lives at /api/."
-    - name: Tengri News RU
-      url: https://tengrinews.kz
-      rss: https://tengrinews.kz/rss
-      language: ru
-      scrape: rss
-      robots_ok: unknown
-      notes: ""
-    - name: KazTAG
-      url: https://kaztag.kz
-      rss: https://kaztag.kz/ru/feed
-      language: ru
-      scrape: rss
-      robots_ok: unknown
-      notes: ""
-    - name: Kazinform RU
-      url: https://www.inform.kz
-      rss: https://www.inform.kz/rss/ru/all.xml
-      language: ru
-      scrape: rss
-      robots_ok: unknown
-      notes: ""
-    - name: Kazinform EN
-      url: https://qazinform.com
-      rss: https://qazinform.com/rss
-      language: en
-      scrape: rss
-      robots_ok: unknown
-      notes: ""
-    - name: Liter KZ
-      url: https://liter.kz
-      rss: https://liter.kz/rss/
-      language: ru
-      scrape: rss
-      robots_ok: unknown
-      notes: ""
-    - name: Zakon KZ
-      url: https://www.zakon.kz
-      rss: https://www.zakon.kz/rss/news/all
-      language: ru
-      scrape: rss
-      robots_ok: unknown
-      notes: ""
+    # Disabled 2026-05-25: Cloudflare bot challenge blocks fetches. Lean on Google News KZ queries (see gnews_queries.yaml).
+    # - name: Tengri News RU
+    #   url: https://tengrinews.kz
+    #   rss: https://tengrinews.kz/rss
+    #   language: ru
+    #   scrape: rss
+    #   robots_ok: unknown
+    #   notes: ""
+    # Disabled 2026-05-25: no working RSS path (tested /ru/feed, /feed, /rss.xml, /ru/rss; all 404). Homepage has no <link rel='alternate'>.
+    # - name: KazTAG
+    #   url: https://kaztag.kz
+    #   rss: https://kaztag.kz/ru/feed
+    #   language: ru
+    #   scrape: rss
+    #   robots_ok: unknown
+    #   notes: ""
+    # Disabled 2026-05-25: /rss/ru/all.xml 404s. Homepage advertises no RSS link; /rss, /rss/news, /rss/ru/index.xml all 404 too.
+    # - name: Kazinform RU
+    #   url: https://www.inform.kz
+    #   rss: https://www.inform.kz/rss/ru/all.xml
+    #   language: ru
+    #   scrape: rss
+    #   robots_ok: unknown
+    #   notes: ""
+    # Disabled 2026-05-25: qazinform.com/rss and /feed both 500. No working endpoint found.
+    # - name: Kazinform EN
+    #   url: https://qazinform.com
+    #   rss: https://qazinform.com/rss
+    #   language: en
+    #   scrape: rss
+    #   robots_ok: unknown
+    #   notes: ""
+    # Disabled 2026-05-25: /rss/, /feed, /rss.xml all 404. Homepage has no <link rel='alternate'>.
+    # - name: Liter KZ
+    #   url: https://liter.kz
+    #   rss: https://liter.kz/rss/
+    #   language: ru
+    #   scrape: rss
+    #   robots_ok: unknown
+    #   notes: ""
+    # Disabled 2026-05-25: /rss/news/all, /rss, /feed all 404. Site has no RSS endpoint.
+    # - name: Zakon KZ
+    #   url: https://www.zakon.kz
+    #   rss: https://www.zakon.kz/rss/news/all
+    #   language: ru
+    #   scrape: rss
+    #   robots_ok: unknown
+    #   notes: ""
     - name: Caravan KZ
       url: https://www.caravan.kz
       rss: https://www.caravan.kz/rss/
@@ -1139,15 +1645,79 @@ countries:
       notes: ""
     - name: Vlast KZ
       url: https://vlast.kz
-      rss: https://vlast.kz/rss
+      rss: https://vlast.kz/feed
       language: ru
       scrape: rss
       robots_ok: unknown
       notes: ""
     - name: Informburo KZ
       url: https://informburo.kz
-      rss: https://informburo.kz/rss/news.rss
+      rss: https://informburo.kz/rss/pubsubhubbub-feed.xml
       language: ru
       scrape: rss
       robots_ok: unknown
       notes: ""
+
+    # Government / institutional press. KZ presidency (Akorda) and
+    # PM office publish via primeminister.kz; press releases are
+    # canonical text every outlet rewrites.
+    - name: Akorda Presidency (via Google News)
+      url: https://www.akorda.kz/ru
+      rss: https://news.google.com/rss/search?q=site:akorda.kz&hl=ru&gl=KZ&ceid=KZ:ru
+      language: ru
+      scrape: rss
+      robots_ok: unknown
+      notes: "Presidential press; Google News proxy."
+    - name: Primeminister.kz (via Google News)
+      url: https://primeminister.kz/ru
+      rss: https://news.google.com/rss/search?q=site:primeminister.kz&hl=ru&gl=KZ&ceid=KZ:ru
+      language: ru
+      scrape: rss
+      robots_ok: unknown
+      notes: "PM office press; Google News proxy."
+    - name: Eurasianet Kazakhstan
+      url: https://eurasianet.org/region/kazakhstan
+      rss: https://eurasianet.org/region/kazakhstan/feed
+      language: en
+      scrape: rss
+      robots_ok: unknown
+      notes: "Independent regional analysis."
+
+    # Extra direct-RSS outlets. Reduces lean on Google News KZ proxies.
+    - name: Orda KZ
+      url: https://orda.kz
+      rss: https://orda.kz/feed/
+      language: ru
+      scrape: rss
+      robots_ok: unknown
+      notes: "Independent investigative outlet."
+    - name: 365info KZ
+      url: https://365info.kz
+      rss: https://365info.kz/feed
+      language: ru
+      scrape: rss
+      robots_ok: unknown
+      notes: ""
+    - name: Times of Central Asia
+      url: https://timesca.com
+      rss: https://timesca.com/feed/
+      language: en
+      scrape: rss
+      robots_ok: unknown
+      notes: "English regional analysis."
+
+    # Reddit KZ diaspora discourse.
+    - name: r/Kazakhstan
+      url: https://www.reddit.com/r/Kazakhstan
+      rss: https://www.reddit.com/r/Kazakhstan/.rss
+      language: en
+      scrape: rss
+      robots_ok: unknown
+      notes: "EN+RU diaspora discussion."
+    - name: r/centralasia
+      url: https://www.reddit.com/r/centralasia
+      rss: https://www.reddit.com/r/centralasia/.rss
+      language: en
+      scrape: rss
+      robots_ok: unknown
+      notes: "Regional sub."

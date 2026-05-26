@@ -9,3 +9,13 @@ dlthub_telemetry = true
 query = "climate"
 chunk_minutes = 60
 
+# ClickHouse destination. Native TCP on 9000 for the loader, HTTP on
+# 8123 reserved for ad-hoc queries. Password lives in
+# .dlt/secrets.toml (gitignored); see .dlt/secrets.toml.example.
+[destination.clickhouse.credentials]
+host = "localhost"
+port = 9000
+http_port = 8123
+database = "news"
+username = "news"
+secure = 0

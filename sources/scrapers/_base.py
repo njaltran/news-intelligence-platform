@@ -39,8 +39,28 @@ class Scraper:
         contain at minimum `url` and `title`. Override per outlet."""
         raise NotImplementedError
 
+    def parse_article(self, soup: BeautifulSoup) -> dict[str, Any]:
+        """Parse a single article page. Override per outlet.
+        Default returns {} so subclasses can opt out of article-page
+        backfill."""
+        return {}
+
+    def fetch_article(self, url: str) -> dict[str, Any]:
+        """Fetch one article page and return parsed fields.
+
+        On any requests.RequestException returns {}. Other exceptions
+        propagate. Sleeps request_delay_s after a successful fetch.
+        """
+        try:
+            html = self.fetch(url)
+        except requests.RequestException:
+            return {}
+        time.sleep(self.request_delay_s)
+        return self.parse_article(BeautifulSoup(html, "html.parser"))
+
     def run(self) -> Iterator[dict[str, Any]]:
-        """Fetch homepage, parse, normalise to project schema."""
+        """Fetch homepage, parse, follow each URL to fill article fields,
+        normalise to project schema."""
         extracted_at = pendulum.now("UTC").to_iso8601_string()
         html = self.fetch(self.base_url)
         time.sleep(self.request_delay_s)
@@ -48,12 +68,13 @@ class Scraper:
             url = partial.get("url")
             if not url:
                 continue
+            article_fields = self.fetch_article(url)
             yield {
                 "source": partial.get("source", self.name),
                 "country_target": self.country,
-                "title": partial.get("title"),
-                "summary": partial.get("summary"),
+                "title": partial["title"] if partial.get("title") is not None else article_fields.get("title"),
+                "summary": partial["summary"] if partial.get("summary") is not None else article_fields.get("summary"),
                 "url": url,
-                "published_at": partial.get("published_at"),
+                "published_at": partial["published_at"] if partial.get("published_at") is not None else article_fields.get("published_at"),
                 "extracted_at": extracted_at,
             }

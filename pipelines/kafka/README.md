@@ -19,9 +19,9 @@ Owned by Nadi. Originally prototyped in [`nadikyaw/Enterprise_Architecture_BigDa
 | `producer_newsapi.py` | NewsAPI: top-headlines for US/DE/IT, `everything` keyword search for MM/KZ. |
 | `producer_bbc.py` | BBC search results across all five countries (English-language outside view). |
 | `producer_local_scrapers.py` | Hybrid HTML + RSS scraping across 11 native outlets. |
-| `producer_rss.py` | Curated per-outlet RSS (`sources/rss.py`) + Google News topic/query feeds (`sources/gnews.py`). The Variety amplifier: same input set as the batch RSS arm, streamed instead. |
+| `producer_rss.py` | Curated per-outlet RSS (`sources/rss.py`) + Google News topic/query feeds (`sources/gnews.py`). The Variety amplifier: same input set as the batch RSS arm, streamed instead. ~40k messages per run. |
 | `consumer_to_duckdb.py` | Kafka consumer + dlt pipeline. Lands every message in `news_articles` table in DuckDB. Use for local debugging. |
-| `consumer_to_clickhouse.py` | Same shape, ClickHouse destination. Merges on `url` into `news.articles`. This is the production-shaped path. |
+| `consumer_to_clickhouse.py` | Same shape, ClickHouse destination. Append-only into `news.articles` (ReplacingMergeTree). This is the production-shaped path. |
 
 All producers publish to topic `unified_news_topic` with the unified message schema (`source`, `country_target`, `title`, `url`, `summary`, `published_at`, `extracted_at`). dlt infers the table schema from these messages.
 
@@ -65,11 +65,33 @@ PYTHONPATH=. uv run python pipelines/kafka/producer_bbc.py
 PYTHONPATH=. uv run python pipelines/kafka/producer_local_scrapers.py
 ```
 
+For the typical local dev loop (broker + ClickHouse + Streamlit dashboard + consumer + RSS producer in one terminal, merged log tail) use the helper script instead:
+
+```bash
+./scripts/dev_stack.sh           # bring everything up
+./scripts/dev_stack.sh --down    # stop docker stack
+```
+
+Verify a clickhouse load:
+
+```bash
+docker exec infra-clickhouse-1 clickhouse-client --user news --password news \
+  -q "SELECT count(), uniqExact(url) FROM news.news___articles"
+```
+
 Tear down:
 
 ```bash
 docker compose -f infra/docker-compose.yml down
 ```
+
+## Streaming cadence
+
+The point of the Kappa path is that the dashboard sees rows trickle in, not arrive in one big burst.
+
+- `producer_rss.py` is single-shot by default. Set `PRODUCER_INTERVAL_S=300` (or any positive value) to loop the sweep on that interval. Set `PRODUCER_MSG_DELAY_MS` to space individual messages out across a sweep instead of bursting.
+- `consumer_to_clickhouse.py` consumes in micro-batches so dlt loads land incrementally. Tunables: `CONSUMER_BATCH_MAX` (default 500), `CONSUMER_BATCH_FLUSH_S` (default 5), `CONSUMER_IDLE_TIMEOUT_S` (default 15, `0` = run forever).
+- Per-feed structured logging from the producer (`pipelines/kafka/_log.py`) lets `dev_stack.sh` interleave RSS, Google News, and producer lines into one merged view.
 
 ## Known limitations (from initial run, 2026-05-06)
 
