@@ -209,6 +209,7 @@ def iter_rss_articles() -> Iterator[dict[str, Any]]:
                     body_futures = {
                         body_pool.submit(_fetch_body, r["url"]): i
                         for i, r in enumerate(rows)
+                        if not _should_skip(r["url"])
                     }
                     filled = 0
                     for bfut in as_completed(body_futures):
@@ -222,7 +223,9 @@ def iter_rss_articles() -> Iterator[dict[str, Any]]:
                             rows[idx]["body"] = body
                             filled += 1
                     _log.info(
-                        "rss: %s -> %d entries, %d bodies", label, len(rows), filled
+                        "rss: %s -> %d entries, %d bodies (%d skipped)",
+                        label, len(rows), filled,
+                        sum(1 for r in rows if _should_skip(r["url"])),
                     )
                 else:
                     _log.info("rss: %s -> %d entries", label, len(rows))
