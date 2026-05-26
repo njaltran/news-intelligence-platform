@@ -34,6 +34,12 @@ import dlt
 import feedparser
 import yaml
 from dlt.common.pendulum import pendulum
+from sources.rss import (
+    BODY_WORKERS,
+    FETCH_BODY,
+    _fetch_body,
+    _should_skip,
+)
 
 _log = logging.getLogger("gnews")
 
@@ -59,8 +65,15 @@ SEARCH_URL = "https://news.google.com/rss/search?q={q}&hl={lang}&gl={gl}&ceid={c
 # window is its own 100-cap feed; URL dedup in the dlt merge disposition
 # absorbs overlap. Override via GNEWS_WINDOWS (comma-separated, "" = no
 # operator). Order matters only for log readability.
+#
+# The default now spans short-burst freshness (1h, 1d, 7d) plus
+# historical backfill (30d, 180d, 1y) so the first sweep populates
+# months of context rather than days. Each extra window adds ~100
+# entries per query × lang at the cost of one more HTTP fetch.
 SEARCH_WINDOWS: tuple[str, ...] = tuple(
-    w.strip() for w in os.environ.get("GNEWS_WINDOWS", ",1h,1d,7d").split(",")
+    w.strip() for w in os.environ.get(
+        "GNEWS_WINDOWS", ",1h,1d,7d,30d,180d,1y"
+    ).split(",")
 )
 
 
@@ -140,6 +153,17 @@ MAX_RETRIES = int(os.environ.get("GNEWS_MAX_RETRIES", "5"))
 BACKOFF_BASE_S = float(os.environ.get("GNEWS_BACKOFF_BASE_S", "1.0"))
 BACKOFF_CAP_S = float(os.environ.get("GNEWS_BACKOFF_CAP_S", "60.0"))
 
+# Circuit breaker. Google soft-throttles by returning HTTP 200 with an
+# empty/malformed RSS payload instead of 429 once it decides the client
+# is hitting too hard. The bozo+empty branch below cannot distinguish
+# that from a genuinely empty feed, so we watch the global ok-rate over
+# the first GNEWS_EARLY_CHECK feeds and abort the sweep if it stays
+# below GNEWS_MIN_OK_RATE. Caller (producer) loops on its own interval,
+# so abort just defers the work to the next sweep instead of burning
+# 30 minutes on a soft-block.
+GNEWS_EARLY_CHECK = int(os.environ.get("GNEWS_EARLY_CHECK", "60"))
+GNEWS_MIN_OK_RATE = float(os.environ.get("GNEWS_MIN_OK_RATE", "0.05"))
+
 
 def _fetch(feed: dict[str, str]):
     """feedparser.parse with the bot UA, exponential backoff on 429.
@@ -173,53 +197,142 @@ def _fetch(feed: dict[str, str]):
     return parsed
 
 
+def _interleave_by_country(feeds: list[dict[str, str]]) -> list[dict[str, str]]:
+    """Round-robin across country_target so we don't submit every DE
+    feed back-to-back. Same set, different order. Spreads load across
+    Google's per-country endpoints and avoids the thundering-herd that
+    trips Google's soft-throttle on a single locale."""
+    by_country: dict[str, list[dict[str, str]]] = {}
+    for f in feeds:
+        by_country.setdefault(f["country_target"], []).append(f)
+    out: list[dict[str, str]] = []
+    while any(by_country.values()):
+        for country in list(by_country.keys()):
+            bucket = by_country[country]
+            if bucket:
+                out.append(bucket.pop(0))
+    return out
+
+
 def iter_gnews_articles() -> Iterator[dict[str, Any]]:
     """One row per Google News RSS entry across the query catalogue.
     Feeds fan out across GNEWS_WORKERS threads (default 12). A single
     failing feed does not abort the run. Plain generator so the
     combined pipeline can chain it with the per-outlet iterator into
-    one dlt resource."""
-    feeds = _load_query_catalogue()
+    one dlt resource.
+
+    Includes a soft-throttle circuit breaker: if the ok-rate stays
+    below GNEWS_MIN_OK_RATE after GNEWS_EARLY_CHECK feeds, abort the
+    sweep so the caller can move on instead of burning ~30 minutes on
+    a Google IP-block."""
+    feeds = _interleave_by_country(_load_query_catalogue())
     _log.info("gnews: %d feeds, %d workers", len(feeds), WORKERS)
     ok = bad = empty = 0
     started = time.monotonic()
-    with ThreadPoolExecutor(max_workers=WORKERS) as pool:
-        futures = {pool.submit(_fetch, f): f for f in feeds}
-        for fut in as_completed(futures):
-            feed = futures[fut]
-            label = feed["source"]
+    aborted = False
+    body_pool = (
+        ThreadPoolExecutor(max_workers=BODY_WORKERS, thread_name_prefix="gnews-body")
+        if FETCH_BODY
+        else None
+    )
+    try:
+        with ThreadPoolExecutor(max_workers=WORKERS) as pool:
+            futures = {pool.submit(_fetch, f): f for f in feeds}
             try:
-                parsed = fut.result()
-            except Exception as exc:  # noqa: BLE001
-                _log.warning("gnews: %s -> error: %s", label, exc)
-                bad += 1
-                continue
-            if parsed.bozo and not parsed.entries:
-                _log.warning("gnews: %s -> empty/malformed", label)
-                empty += 1
-                continue
-            emitted = 0
-            for entry in parsed.entries:
-                url = entry.get("link")
-                if not url:
-                    continue
-                emitted += 1
-                yield {
-                    "source": feed["source"],
-                    "country_target": feed["country_target"],
-                    "title": entry.get("title"),
-                    "summary": _summary(entry),
-                    "url": url,
-                    "published_at": _parse_published(entry),
-                    "extracted_at": pendulum.now("UTC").to_iso8601_string(),
-                }
-            ok += 1
-            _log.info("gnews: %s -> %d entries", label, emitted)
+                for fut in as_completed(futures):
+                    if aborted:
+                        continue
+                    feed = futures[fut]
+                    label = feed["source"]
+                    try:
+                        parsed = fut.result()
+                    except Exception as exc:  # noqa: BLE001
+                        _log.warning("gnews: %s -> error: %s", label, exc)
+                        bad += 1
+                    else:
+                        if parsed.bozo and not parsed.entries:
+                            _log.warning("gnews: %s -> empty/malformed", label)
+                            empty += 1
+                        else:
+                            rows: list[dict[str, Any]] = []
+                            for entry in parsed.entries:
+                                url = entry.get("link")
+                                if not url:
+                                    continue
+                                rows.append(
+                                    {
+                                        "source": feed["source"],
+                                        "country_target": feed["country_target"],
+                                        "title": entry.get("title"),
+                                        "summary": _summary(entry),
+                                        "url": url,
+                                        "published_at": _parse_published(entry),
+                                        "extracted_at": pendulum.now("UTC").to_iso8601_string(),
+                                    }
+                                )
+                            if body_pool is not None and rows:
+                                body_futures = {
+                                    body_pool.submit(_fetch_body, r["url"]): i
+                                    for i, r in enumerate(rows)
+                                    if not _should_skip(r["url"])
+                                }
+                                filled = 0
+                                for bfut in as_completed(body_futures):
+                                    idx = body_futures[bfut]
+                                    try:
+                                        body = bfut.result()
+                                    except Exception as exc:  # noqa: BLE001
+                                        _log.debug("body: %s -> %s", rows[idx]["url"], exc)
+                                        body = None
+                                    if body:
+                                        rows[idx]["body"] = body
+                                        filled += 1
+                                _log.info(
+                                    "gnews: %s -> %d entries, %d bodies (%d skipped)",
+                                    label, len(rows), filled,
+                                    sum(1 for r in rows if _should_skip(r["url"])),
+                                )
+                            else:
+                                _log.info("gnews: %s -> %d entries", label, len(rows))
+                            ok += 1
+                            for row in rows:
+                                yield row
+
+                    processed = ok + empty + bad
+                    if (
+                        not aborted
+                        and processed >= GNEWS_EARLY_CHECK
+                        and ok / processed < GNEWS_MIN_OK_RATE
+                    ):
+                        _log.warning(
+                            "gnews: ok=%d empty=%d bad=%d after %d feeds "
+                            "(ok-rate %.1f%% < %.1f%%). Looks like Google is "
+                            "soft-throttling. Aborting sweep, next sweep retries.",
+                            ok,
+                            empty,
+                            bad,
+                            processed,
+                            100 * ok / processed,
+                            100 * GNEWS_MIN_OK_RATE,
+                        )
+                        aborted = True
+                        for pending in futures:
+                            if not pending.done():
+                                pending.cancel()
+            finally:
+                # Drop still-running fetches as soon as the with-block exits.
+                # Without cancel_futures, ThreadPoolExecutor.shutdown blocks
+                # waiting on every queued future to be picked up first.
+                pool.shutdown(wait=False, cancel_futures=True)
+    finally:
+        if body_pool is not None:
+            body_pool.shutdown(wait=True)
     _log.info(
-        "gnews: done. ok=%d empty=%d bad=%d elapsed=%.1fs",
+        "gnews: done. ok=%d empty=%d bad=%d aborted=%s elapsed=%.1fs",
         ok,
         empty,
         bad,
+        aborted,
         time.monotonic() - started,
     )
 
