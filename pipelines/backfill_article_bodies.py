@@ -20,6 +20,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import re
 import sys
 from collections import Counter
 from concurrent.futures import ThreadPoolExecutor, as_completed
@@ -63,9 +64,32 @@ def body_column_exists() -> bool:
     return ch_query(sql).strip() == "1"
 
 
+def _safe_country(country: str | None) -> str | None:
+    """ISO alpha-2 only. Reject anything that could escape the SQL literal."""
+    if country is None:
+        return None
+    if not re.fullmatch(r"[A-Za-z]{2}", country):
+        raise ValueError(f"--country must be a 2-letter ISO code, got {country!r}")
+    return country.upper()
+
+
+def _safe_source_like(source: str | None) -> str | None:
+    """Allow letters, digits, spaces and LIKE wildcards (% and _); nothing else.
+    A real source name with a quote (`O'Globo`) is rare and can be added to
+    sources.yaml without it; for the backfill filter we keep the grammar strict
+    so the value cannot break out of the SQL literal."""
+    if source is None:
+        return None
+    if not re.fullmatch(r"[A-Za-z0-9 _%/\.\-]+", source):
+        raise ValueError(f"--source has illegal characters: {source!r}")
+    return source
+
+
 def select_missing_body(
     limit: int, country: str | None, source: str | None
 ) -> list[dict]:
+    country = _safe_country(country)
+    source = _safe_source_like(source)
     where_body = (
         "(body IS NULL OR body = '')" if body_column_exists() else "1 = 1"
     )
