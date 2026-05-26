@@ -29,6 +29,7 @@ from __future__ import annotations
 
 import json
 import os
+import signal
 import time
 from collections import Counter
 
@@ -47,9 +48,24 @@ CONSUMER_GROUP = "news_loaders_clickhouse"
 BATCH_MAX = int(os.environ.get("CONSUMER_BATCH_MAX", "500"))
 BATCH_FLUSH_S = float(os.environ.get("CONSUMER_BATCH_FLUSH_S", "5"))
 IDLE_TIMEOUT_S = int(os.environ.get("CONSUMER_IDLE_TIMEOUT_S", "15"))
+# Grace period after shutdown signal to drain remaining Kafka backlog.
+SHUTDOWN_DRAIN_S = float(os.environ.get("CONSUMER_SHUTDOWN_DRAIN_S", "20"))
 POLL_TIMEOUT_S = 0.5
 
 log = get_logger("consumer")
+
+_shutdown_at: float | None = None
+
+
+def _request_shutdown(signum, _frame) -> None:
+    global _shutdown_at
+    if _shutdown_at is None:
+        _shutdown_at = time.time()
+        log.info(
+            "received signal %d, draining for %.0fs then exiting",
+            signum,
+            SHUTDOWN_DRAIN_S,
+        )
 
 
 def _drain_batch(consumer: Consumer) -> list[dict]:
@@ -71,6 +87,9 @@ def _drain_batch(consumer: Consumer) -> list[dict]:
 
 
 def run() -> None:
+    signal.signal(signal.SIGTERM, _request_shutdown)
+    signal.signal(signal.SIGINT, _request_shutdown)
+
     consumer = Consumer(
         {
             "bootstrap.servers": BOOTSTRAP_SERVERS,
@@ -150,7 +169,20 @@ def run() -> None:
                     time.monotonic() - started,
                 )
                 return
+            if _shutdown_at is not None:
+                drained_for = time.time() - _shutdown_at
+                idle_for = time.time() - last_msg_at
+                # Exit as soon as backlog is drained (idle > 2s) or the
+                # hard drain budget is up, so Ctrl+C is responsive.
+                if drained_for >= SHUTDOWN_DRAIN_S or (received_any and idle_for >= 2.0):
+                    log.info(
+                        "shutdown drain complete. total=%d drained_for=%.1fs",
+                        total,
+                        drained_for,
+                    )
+                    return
     finally:
+        log.info("closing consumer (commits final offsets). total=%d", total)
         consumer.close()
 
 

@@ -28,6 +28,12 @@ countries:
     lang: de
     gl: DE
     ceid: DE:de
+    # German UI plus English UI. English widens diaspora outlets and
+    # international wires that index Germany under broader regional
+    # tags, mirroring the MM/KZ multi-lang pattern.
+    langs:
+      - de
+      - en
     topics:
       - WORLD
       - NATION
@@ -114,11 +120,60 @@ countries:
       - Streik
       - KI
       - Digitalisierung
+      - Cyberangriff
+      - Datenschutz
+      - DSGVO
+      - Krankenhaus
+      - Pflege
+      - Mietpreis
+      - Mindestlohn
+      - Bürgergeld
+      - Asyl
+      - Asylpolitik
+      - Grenzkontrolle
+      - Bundespolizei
+      - Verfassungsschutz
+      - Hochwasser
+      - Dürre
+      - Hitzewelle
+      - BMW Werk
+      - Mercedes
+      - Porsche
+      - Lufthansa
+      - SAP
+      - Telekom
+      - RWE
+      - Innenministerium
+      - Auswärtiges Amt
+      - Bundeskanzleramt
+      - Niedersachsen
+      - Hessen
+      - Baden-Württemberg
+      - Nordrhein-Westfalen
+      - Thüringen
+      - Brandenburg
+      - Rheinland-Pfalz
+      - Schleswig-Holstein
+      - Mecklenburg-Vorpommern
+      - Saarland
+      - Bremen
+      - Tarifverhandlung
+      - Gewerkschaft
+      - ver.di
+      - IG Metall
+      - Klimaprotest
+      - Letzte Generation
 
   US:
     lang: en
     gl: US
     ceid: US:en
+    # English UI plus Spanish UI. Spanish surfaces Univision, Telemundo,
+    # and other US-Hispanic outlets the en CEID under-ranks; useful
+    # cross-language signal on US political coverage.
+    langs:
+      - en
+      - es
     topics:
       - WORLD
       - NATION
@@ -201,11 +256,75 @@ countries:
       - housing
       - gas prices
       - student loans
+      - "rate cut"
+      - "rate hike"
+      - "Treasury yield"
+      - earnings
+      - recession
+      - tariff
+      - "trade war"
+      - "supply chain"
+      - "drug policy"
+      - "school shooting"
+      - "mass shooting"
+      - "abortion rights"
+      - "voting rights"
+      - "labor union"
+      - "auto strike"
+      - "Hollywood strike"
+      - SCOTUS
+      - "executive order"
+      - "DOJ indictment"
+      - impeachment
+      - filibuster
+      - "midterm elections"
+      - "primary election"
+      - Pennsylvania
+      - Michigan
+      - Wisconsin
+      - Georgia
+      - Arizona
+      - Nevada
+      - Atlanta
+      - Boston
+      - Detroit
+      - Philadelphia
+      - Houston
+      - Phoenix
+      - "San Francisco"
+      - Seattle
+      - Portland
+      - Denver
+      - "drone strike"
+      - "Hamas hostages"
+      - Lebanon
+      - Yemen
+      - Houthi
+      - Taiwan
+      - "North Korea"
+      - "South Korea"
+      - Japan
+      - Mexico
+      - Venezuela
+      - Cuba
+      - Cybersecurity
+      - ransomware
+      - "data breach"
+      - "AI regulation"
+      - chip
+      - semiconductor
+      - NVIDIA
 
   IT:
     lang: it
     gl: IT
     ceid: IT:it
+    # Italian UI plus English UI. English picks up Reuters/AP/AFP
+    # Italy bureaus and Vatican-watcher international press the it
+    # CEID under-ranks.
+    langs:
+      - it
+      - en
     topics:
       - WORLD
       - NATION
@@ -288,6 +407,57 @@ countries:
       - lavoro
       - sciopero
       - manifestazione
+      - Vannacci
+      - Crosetto
+      - Lollobrigida
+      - Piantedosi
+      - Nordio
+      - Giorgetti
+      - "salario minimo"
+      - "reddito di cittadinanza"
+      - pensioni
+      - tasse
+      - "manovra economica"
+      - "legge di bilancio"
+      - "spread BTP"
+      - "Banca d'Italia"
+      - Cdp
+      - Eni
+      - Enel
+      - Leonardo
+      - Stellantis
+      - "Ferrovie dello Stato"
+      - "Alta velocità"
+      - autostrade
+      - Lampedusa
+      - "centri Albania"
+      - Frontex
+      - "Mediterraneo migranti"
+      - "ong migranti"
+      - "Salario minimo"
+      - Veneto
+      - Piemonte
+      - Puglia
+      - Campania
+      - Calabria
+      - Sardegna
+      - Trento
+      - Bolzano
+      - Atalanta
+      - Lazio calcio
+      - Fiorentina
+      - Champions League
+      - Olimpiadi
+      - "Milano Cortina"
+      - Sanremo
+      - Mostra di Venezia
+      - "festival Cannes"
+      - "donne uccise"
+      - femminicidio
+      - "violenza donne"
+      - "cyber attacco"
+      - Spid
+      - "intelligenza artificiale UE"
 
   MM:
     lang: my
@@ -358,6 +528,50 @@ countries:
       - "Three Brotherhood Alliance"
       - "Operation 1027"
       - "Myanmar civil war"
+      - "Myanmar fighting"
+      - "Myanmar conscription"
+      - "Myanmar military service law"
+      - "Myanmar refugees Thailand"
+      - "Myanmar Bangladesh border"
+      - "Cyclone Mocha"
+      - "Cyclone Myanmar"
+      - "Myanmar landmine"
+      - "Myanmar internet shutdown"
+      - "Myanmar journalist"
+      - "Myanmar press freedom"
+      - "Myanmar political prisoner"
+      - "Myanmar human rights"
+      - "Myanmar UN report"
+      - "Myanmar ICJ"
+      - "Myanmar ICC"
+      - "Myanmar genocide"
+      - "Rohingya repatriation"
+      - "Bangladesh Cox's Bazar"
+      - "Mong La"
+      - "Wa State"
+      - "UWSA"
+      - "Mae Sot"
+      - "Kayah State"
+      - "Magway"
+      - "Bago"
+      - "Tanintharyi"
+      - "Mawlamyine"
+      - "Sittwe"
+      - "Lashio"
+      - "Hpakant"
+      - "jade Myanmar"
+      - "Myanmar rare earth"
+      - "Myanmar gas pipeline"
+      - "Myanmar TotalEnergies"
+      - "Chevron Myanmar"
+      - "Myanmar scam centre"
+      - "Myanmar cyber slavery"
+      - "Myitkyina"
+      - "Myawaddy"
+      - "Loikaw"
+      - "Hakha"
+      - "Bhamo"
+      - "Falam"
 
   KZ:
     lang: ru
@@ -453,3 +667,49 @@ countries:
       - "Kazakhstan Tokayev"
       - "Central Asia"
       - "Caspian Sea"
+      - "Kazakhstan protest"
+      - "Kazakhstan Qantar"
+      - "Bloody January"
+      - "Kazakhstan Akmola"
+      - "Kazakhstan flood"
+      - "Kazakhstan referendum"
+      - "Kazakhstan AIFC"
+      - "Astana International Financial Centre"
+      - "Kazakhstan SCO"
+      - "Kazakhstan BRI"
+      - "Kazakhstan Belt and Road"
+      - "Kazakhstan Tengiz"
+      - "Kazakhstan Kashagan"
+      - "Kazakhstan Karachaganak"
+      - "Kazakhstan Chevron"
+      - "Kazakhstan ExxonMobil"
+      - "Kazakhstan Eni"
+      - "Kazakhstan TotalEnergies"
+      - "Kazakhstan rail"
+      - "Trans-Caspian corridor"
+      - "Middle Corridor"
+      - "Karachaganak"
+      - "Aral Sea"
+      - "Semey nuclear"
+      - "Semipalatinsk"
+      - "Бишкек"
+      - "Ташкент"
+      - "Душанбе"
+      - "Ашхабад"
+      - "Иран"
+      - "Туркменистан"
+      - "Каспий"
+      - "Тенгиз"
+      - "Кашаган"
+      - "санкции против России"
+      - "вторичные санкции"
+      - "релоканты"
+      - "мобилизация"
+      - "хабар"
+      - "Aqorda"
+      - "ҚазАқпарат"
+      - "БҚО"
+      - "Шығыс Қазақстан"
+      - "Жамбыл"
+      - "Қызылорда"
+      - "Маңғыстау"

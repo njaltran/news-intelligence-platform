@@ -29,6 +29,7 @@ from __future__ import annotations
 
 import json
 import os
+import signal
 import socket
 import time
 from collections import Counter
@@ -56,6 +57,14 @@ get_logger("gnews")
 # Bound feedparser network waits so one stuck feed cannot stall the producer.
 socket.setdefaulttimeout(20)
 
+_shutdown = False
+
+
+def _request_shutdown(signum, _frame) -> None:
+    global _shutdown
+    _shutdown = True
+    log.info("received signal %d, finishing current sweep then exiting", signum)
+
 
 def _delivery_report(err, _msg) -> None:
     if err is not None:
@@ -68,6 +77,9 @@ def _one_sweep(producer: Producer) -> int:
     count = 0
     delay = MSG_DELAY_MS / 1000.0
     for article in _chained_articles():
+        if _shutdown:
+            log.info("shutdown requested mid-sweep, stopping after %d msgs", count)
+            break
         producer.produce(
             TOPIC,
             json.dumps(article, ensure_ascii=False).encode("utf-8"),
@@ -100,6 +112,9 @@ def _one_sweep(producer: Producer) -> int:
 
 
 def run() -> None:
+    signal.signal(signal.SIGTERM, _request_shutdown)
+    signal.signal(signal.SIGINT, _request_shutdown)
+
     producer = Producer(
         {
             "bootstrap.servers": BOOTSTRAP_SERVERS,
@@ -121,20 +136,31 @@ def run() -> None:
 
     sweep = 0
     total = 0
-    while True:
-        sweep += 1
-        log.info("starting sweep %d", sweep)
-        total += _one_sweep(producer)
-        if INTERVAL_S <= 0:
-            log.info("done. total_produced=%d sweeps=%d", total, sweep)
-            return
-        log.info(
-            "sweep %d complete. total=%d. sleeping %ds before next sweep.",
-            sweep,
-            total,
-            INTERVAL_S,
-        )
-        time.sleep(INTERVAL_S)
+    try:
+        while not _shutdown:
+            sweep += 1
+            log.info("starting sweep %d", sweep)
+            total += _one_sweep(producer)
+            if _shutdown:
+                break
+            if INTERVAL_S <= 0:
+                log.info("done. total_produced=%d sweeps=%d", total, sweep)
+                return
+            log.info(
+                "sweep %d complete. total=%d. sleeping %ds before next sweep.",
+                sweep,
+                total,
+                INTERVAL_S,
+            )
+            # Sleep in small chunks so shutdown is reactive.
+            slept = 0.0
+            while slept < INTERVAL_S and not _shutdown:
+                time.sleep(min(1.0, INTERVAL_S - slept))
+                slept += 1.0
+    finally:
+        log.info("flushing producer before exit. total_produced=%d sweeps=%d", total, sweep)
+        producer.flush(timeout=30)
+        log.info("producer flushed and exiting cleanly")
 
 
 def _chained_articles():
