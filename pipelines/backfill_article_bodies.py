@@ -127,8 +127,63 @@ def main() -> int:
     log.info("selected %d rows to attempt", len(rows))
     if not rows:
         return 0
-    # TODO: fetch + dlt write in next task.
-    log.info("dry skeleton: skipping fetch/write")
+
+    filled: list[dict] = []
+    by_country_attempt: Counter[str] = Counter()
+    by_country_ok: Counter[str] = Counter()
+
+    with ThreadPoolExecutor(max_workers=args.workers) as pool:
+        future_to_row = {pool.submit(_fetch_body, r["url"]): r for r in rows}
+        for fut in as_completed(future_to_row):
+            row = future_to_row[fut]
+            ck = row.get("country_target") or "?"
+            by_country_attempt[ck] += 1
+            try:
+                body = fut.result()
+            except Exception as exc:  # noqa: BLE001
+                log.debug("fetch failed: %s -> %s", row["url"], exc)
+                body = None
+            if body:
+                filled.append({**row, "body": body})
+                by_country_ok[ck] += 1
+            if (by_country_attempt.total() % 100) == 0:
+                log.info(
+                    "progress: %d/%d attempted, %d filled, by_country=%s",
+                    by_country_attempt.total(),
+                    len(rows),
+                    len(filled),
+                    dict(by_country_attempt),
+                )
+
+    log.info(
+        "fetch done: %d/%d filled. by_country_ok=%s by_country_attempt=%s",
+        len(filled),
+        len(rows),
+        dict(by_country_ok),
+        dict(by_country_attempt),
+    )
+
+    if args.dry_run:
+        log.info("--dry-run: skipping dlt write")
+        return 0
+    if not filled:
+        log.info("nothing to write")
+        return 0
+
+    pipeline = dlt.pipeline(
+        pipeline_name="backfill_article_bodies",
+        destination="clickhouse",
+        dataset_name=DATASET,
+    )
+    pipeline.run(
+        dlt.resource(
+            iter(filled),
+            name=DLT_TABLE,
+            primary_key="url",
+            write_disposition="merge",
+        )
+    )
+    log.info("dlt write done. merged %d rows into %s.%s", len(filled), DATASET, DLT_TABLE)
     return 0
 
 
