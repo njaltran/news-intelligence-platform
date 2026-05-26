@@ -24,13 +24,13 @@ from dlt.common.pendulum import pendulum
 
 _log = logging.getLogger("rss")
 
-WORKERS = int(os.environ.get("RSS_WORKERS", "24"))
+WORKERS = int(os.environ.get("RSS_WORKERS", "48"))
 
 # Opt-in full-article body fetch. RSS summaries are often truncated or
 # pure HTML snippets, so for downstream NLP we want the real body. Off
 # by default to keep the batch arm fast; turn on for richer Volume.
 FETCH_BODY = os.environ.get("RSS_FETCH_BODY", "0") not in ("", "0", "false", "False")
-BODY_WORKERS = int(os.environ.get("RSS_BODY_WORKERS", "16"))
+BODY_WORKERS = int(os.environ.get("RSS_BODY_WORKERS", "64"))
 BODY_TIMEOUT_S = float(os.environ.get("RSS_BODY_TIMEOUT_S", "15"))
 BODY_MAX_CHARS = int(os.environ.get("RSS_BODY_MAX_CHARS", "20000"))
 
@@ -145,20 +145,32 @@ def _should_skip(url: str) -> bool:
     return url.startswith(_SKIP_HOST_PREFIXES)
 
 
-def iter_rss_articles() -> Iterator[dict[str, Any]]:
+def iter_rss_articles(
+    countries: list[str] | None = None,
+    shard: tuple[int, int] | None = None,
+) -> Iterator[dict[str, Any]]:
     """One row per RSS entry across all outlets with `scrape: rss` in
     sources.yaml. Feeds are fetched in parallel via a ThreadPool
-    (RSS_WORKERS, default 24). A single dead feed does not abort the
+    (RSS_WORKERS, default 48). A single dead feed does not abort the
     run. Plain generator so the combined pipeline can chain it with
     the Google News iterator into one dlt resource. `extracted_at` is
     stamped at yield time so downstream dashboards can show a real
     arrivals timeline rather than a single sweep-start spike.
 
+    `countries` (optional) restricts outlets to those country codes.
+    Lets multiple producer processes shard the feed list.
+
     When RSS_FETCH_BODY=1 each entry's URL is GET'd in a separate
-    ThreadPool (RSS_BODY_WORKERS, default 16) and the extracted main
+    ThreadPool (RSS_BODY_WORKERS, default 64) and the extracted main
     text lands in `body`. Volume V goes up by ~10-50x per row;
     dlt schema-infers the new column so the consumer auto-evolves."""
     outlets = _load_rss_outlets()
+    if countries:
+        wanted = {c.strip() for c in countries}
+        outlets = [o for o in outlets if o["country_target"] in wanted]
+    if shard is not None:
+        n, m = shard
+        outlets = [o for i, o in enumerate(outlets) if i % m == n]
     _log.info(
         "rss: %d outlets, %d workers, fetch_body=%s",
         len(outlets),
@@ -204,11 +216,14 @@ def iter_rss_articles() -> Iterator[dict[str, Any]]:
                         }
                     )
                 if body_pool is not None and rows:
-                    body_futures = {
-                        body_pool.submit(_fetch_body, r["url"]): i
-                        for i, r in enumerate(rows)
-                        if not _should_skip(r["url"])
-                    }
+                    body_futures: dict[Any, int] = {}
+                    skipped = 0
+                    for i, r in enumerate(rows):
+                        if _should_skip(r["url"]):
+                            skipped += 1
+                            yield r
+                        else:
+                            body_futures[body_pool.submit(_fetch_body, r["url"])] = i
                     filled = 0
                     for bfut in as_completed(body_futures):
                         idx = body_futures[bfut]
@@ -220,15 +235,15 @@ def iter_rss_articles() -> Iterator[dict[str, Any]]:
                         if body:
                             rows[idx]["body"] = body
                             filled += 1
+                        yield rows[idx]
                     _log.info(
                         "rss: %s -> %d entries, %d bodies (%d skipped)",
-                        label, len(rows), filled,
-                        sum(1 for r in rows if _should_skip(r["url"])),
+                        label, len(rows), filled, skipped,
                     )
                 else:
                     _log.info("rss: %s -> %d entries", label, len(rows))
-                for row in rows:
-                    yield row
+                    for row in rows:
+                        yield row
                 ok += 1
     finally:
         if body_pool is not None:

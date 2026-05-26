@@ -36,20 +36,30 @@ if [[ "${1:-}" == "--down" ]]; then
 fi
 
 LOG_DIR=${LOG_DIR:-/tmp}
-PRODUCER_LOG="$LOG_DIR/news-producer.log"
 CONSUMER_LOG="$LOG_DIR/news-consumer.log"
 STREAMLIT_LOG="$LOG_DIR/news-streamlit.log"
+
+# Number of producer processes. Each takes a 1/N shard of the feed
+# catalogue (sources.yaml + gnews_queries.yaml) so combined throughput
+# scales near-linearly with N until upstream publishers rate-limit.
+# Each producer runs its own RSS_BODY_WORKERS pool so total in-flight
+# HTTP body requests is N * RSS_BODY_WORKERS.
+PRODUCER_SHARDS=${PRODUCER_SHARDS:-4}
 
 # Seconds to wait after killing producer before killing consumer,
 # so the consumer drains whatever the producer left on the topic.
 DRAIN_GRACE_S=${DRAIN_GRACE_S:-25}
 
 # Truncate log files on each fresh run so the live tail starts clean.
-: > "$PRODUCER_LOG"
 : > "$CONSUMER_LOG"
 : > "$STREAMLIT_LOG"
+producer_logs=()
+for ((i = 0; i < PRODUCER_SHARDS; i++)); do
+  producer_logs+=("$LOG_DIR/news-producer-$i.log")
+  : > "${producer_logs[$i]}"
+done
 
-producer_pid=""
+producer_pids=()
 consumer_pid=""
 streamlit_pid=""
 tail_pids=()
@@ -63,10 +73,14 @@ cleanup() {
   echo
   echo "[dev-stack] ordered shutdown..."
 
-  if [[ -n "$producer_pid" ]] && kill -0 "$producer_pid" 2>/dev/null; then
-    echo "[dev-stack]   1/3 stopping producer (pid=$producer_pid)"
-    kill -TERM "$producer_pid" 2>/dev/null || true
-    wait "$producer_pid" 2>/dev/null || true
+  if [[ ${#producer_pids[@]} -gt 0 ]]; then
+    echo "[dev-stack]   1/3 stopping ${#producer_pids[@]} producer(s): ${producer_pids[*]}"
+    for pid in "${producer_pids[@]}"; do
+      kill -TERM "$pid" 2>/dev/null || true
+    done
+    for pid in "${producer_pids[@]}"; do
+      wait "$pid" 2>/dev/null || true
+    done
   fi
 
   if [[ -n "$consumer_pid" ]] && kill -0 "$consumer_pid" 2>/dev/null; then
@@ -153,15 +167,19 @@ CONSUMER_IDLE_TIMEOUT_S=0 \
   >"$CONSUMER_LOG" 2>&1 &
 consumer_pid=$!
 
-# Producer loops on this interval and paces messages so the sweep
-# trickles across the window instead of bursting. 40k msgs * 7ms ~=
-# 280s, which fits inside the 300s default interval.
-PRODUCER_INTERVAL_S=${PRODUCER_INTERVAL_S:-300} \
-  PRODUCER_MSG_DELAY_MS=${PRODUCER_MSG_DELAY_MS:-7} \
-  RSS_FETCH_BODY=${RSS_FETCH_BODY:-1} \
-  PYTHONPATH=. uv run python pipelines/kafka/producer_rss.py \
-  >"$PRODUCER_LOG" 2>&1 &
-producer_pid=$!
+# Producers loop on this interval and pace messages so each sweep
+# trickles across the window instead of bursting. PRODUCER_SHARDS
+# parallel processes each take a 1/N slice of the feed catalogue.
+# Throughput scales near-linearly until upstream rate-limits kick in.
+for ((i = 0; i < PRODUCER_SHARDS; i++)); do
+  PRODUCER_INTERVAL_S=${PRODUCER_INTERVAL_S:-300} \
+    PRODUCER_MSG_DELAY_MS=${PRODUCER_MSG_DELAY_MS:-7} \
+    PRODUCER_SHARD="$i/$PRODUCER_SHARDS" \
+    RSS_FETCH_BODY=${RSS_FETCH_BODY:-1} \
+    PYTHONPATH=. uv run python pipelines/kafka/producer_rss.py \
+    >"${producer_logs[$i]}" 2>&1 &
+  producer_pids+=($!)
+done
 
 # ANSI colours per component so the merged view stays readable.
 CYAN="\033[0;36m"; YEL="\033[0;33m"; MAG="\033[0;35m"; RST="\033[0m"
@@ -174,12 +192,14 @@ prefix() {
   tail_pids+=($!)
 }
 
-prefix "producer"  "$CYAN" "$PRODUCER_LOG"
+for ((i = 0; i < PRODUCER_SHARDS; i++)); do
+  prefix "producer$i" "$CYAN" "${producer_logs[$i]}"
+done
 prefix "consumer"  "$YEL"  "$CONSUMER_LOG"
 prefix "streamlit" "$MAG"  "$STREAMLIT_LOG"
 
 echo "[dev-stack] 5/5 live. dashboard: http://localhost:8501"
-echo "[dev-stack]   logs:   $PRODUCER_LOG / $CONSUMER_LOG / $STREAMLIT_LOG"
+echo "[dev-stack]   logs:   ${producer_logs[*]} / $CONSUMER_LOG / $STREAMLIT_LOG"
 echo "[dev-stack]   stop:   Ctrl+C   -> ordered drain, data persists in volumes"
 echo "[dev-stack]           --down   -> also stops docker (volumes preserved)"
 echo

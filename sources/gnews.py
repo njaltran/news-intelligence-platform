@@ -214,18 +214,31 @@ def _interleave_by_country(feeds: list[dict[str, str]]) -> list[dict[str, str]]:
     return out
 
 
-def iter_gnews_articles() -> Iterator[dict[str, Any]]:
+def iter_gnews_articles(
+    countries: list[str] | None = None,
+    shard: tuple[int, int] | None = None,
+) -> Iterator[dict[str, Any]]:
     """One row per Google News RSS entry across the query catalogue.
     Feeds fan out across GNEWS_WORKERS threads (default 12). A single
     failing feed does not abort the run. Plain generator so the
     combined pipeline can chain it with the per-outlet iterator into
     one dlt resource.
 
+    `countries` (optional) restricts feeds to those country codes.
+    Lets multiple producer processes shard the catalogue.
+
     Includes a soft-throttle circuit breaker: if the ok-rate stays
     below GNEWS_MIN_OK_RATE after GNEWS_EARLY_CHECK feeds, abort the
     sweep so the caller can move on instead of burning ~30 minutes on
     a Google IP-block."""
-    feeds = _interleave_by_country(_load_query_catalogue())
+    feeds = _load_query_catalogue()
+    if countries:
+        wanted = {c.strip() for c in countries}
+        feeds = [f for f in feeds if f["country_target"] in wanted]
+    feeds = _interleave_by_country(feeds)
+    if shard is not None:
+        n, m = shard
+        feeds = [f for i, f in enumerate(feeds) if i % m == n]
     _log.info("gnews: %d feeds, %d workers", len(feeds), WORKERS)
     ok = bad = empty = 0
     started = time.monotonic()
@@ -271,11 +284,16 @@ def iter_gnews_articles() -> Iterator[dict[str, Any]]:
                                     }
                                 )
                             if body_pool is not None and rows:
-                                body_futures = {
-                                    body_pool.submit(_fetch_body, r["url"]): i
-                                    for i, r in enumerate(rows)
-                                    if not _should_skip(r["url"])
-                                }
+                                body_futures: dict[Any, int] = {}
+                                skipped = 0
+                                for i, r in enumerate(rows):
+                                    if _should_skip(r["url"]):
+                                        skipped += 1
+                                        yield r
+                                    else:
+                                        body_futures[
+                                            body_pool.submit(_fetch_body, r["url"])
+                                        ] = i
                                 filled = 0
                                 for bfut in as_completed(body_futures):
                                     idx = body_futures[bfut]
@@ -287,16 +305,16 @@ def iter_gnews_articles() -> Iterator[dict[str, Any]]:
                                     if body:
                                         rows[idx]["body"] = body
                                         filled += 1
+                                    yield rows[idx]
                                 _log.info(
                                     "gnews: %s -> %d entries, %d bodies (%d skipped)",
-                                    label, len(rows), filled,
-                                    sum(1 for r in rows if _should_skip(r["url"])),
+                                    label, len(rows), filled, skipped,
                                 )
                             else:
                                 _log.info("gnews: %s -> %d entries", label, len(rows))
+                                for row in rows:
+                                    yield row
                             ok += 1
-                            for row in rows:
-                                yield row
 
                     processed = ok + empty + bad
                     if (

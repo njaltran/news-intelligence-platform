@@ -108,8 +108,12 @@ def run() -> None:
         IDLE_TIMEOUT_S,
     )
 
+    # Per-PID pipeline name so multiple consumer processes in the same
+    # group don't share a dlt state dir (concurrent writes would race).
+    # ReplacingMergeTree on the ClickHouse side dedups across them.
+    pipeline_suffix = os.environ.get("CONSUMER_PIPELINE_SUFFIX") or str(os.getpid())
     pipeline = dlt.pipeline(
-        pipeline_name="kafka_to_clickhouse",
+        pipeline_name=f"kafka_to_clickhouse_{pipeline_suffix}",
         destination="clickhouse",
         dataset_name=DATASET,
     )

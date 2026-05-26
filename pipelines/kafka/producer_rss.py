@@ -48,6 +48,40 @@ INTERVAL_S = int(os.environ.get("PRODUCER_INTERVAL_S", "0"))
 # of bursting. 0 = unpaced (legacy behaviour, useful when bulk-loading).
 MSG_DELAY_MS = float(os.environ.get("PRODUCER_MSG_DELAY_MS", "0"))
 
+# Source shard. CSV of {rss,gnews}. Default both. Lets multiple
+# producer processes split the work: one process rss-only, one
+# gnews-only avoids the serial rss->gnews chain inside a single
+# process.
+SOURCES = tuple(
+    s.strip()
+    for s in os.environ.get("PRODUCER_SOURCES", "rss,gnews").split(",")
+    if s.strip()
+)
+# Country shard. CSV of country codes (DE, US, IT, MM, KZ). Empty = all.
+# Lets N producers split by country, e.g. one for DE+US, one for the
+# rest. Filter is applied inside each iterator.
+COUNTRIES = [
+    c.strip()
+    for c in os.environ.get("PRODUCER_COUNTRIES", "").split(",")
+    if c.strip()
+] or None
+
+# Generic shard. PRODUCER_SHARD="n/m" picks every m-th feed starting at
+# offset n. Cleanest way to run N parallel producer processes that
+# split sources.yaml + gnews_queries.yaml evenly without overlap. Empty
+# = no sharding.
+def _parse_shard(raw: str) -> tuple[int, int] | None:
+    if not raw or "/" not in raw:
+        return None
+    n_str, m_str = raw.split("/", 1)
+    n, m = int(n_str), int(m_str)
+    if m <= 0 or n < 0 or n >= m:
+        raise ValueError(f"PRODUCER_SHARD={raw!r} invalid (need 0 <= n < m, m > 0)")
+    return n, m
+
+
+SHARD = _parse_shard(os.environ.get("PRODUCER_SHARD", "").strip())
+
 log = get_logger("producer")
 # Hook the source loggers into the same handler so feed-level lines
 # stream alongside the producer's own.
@@ -127,11 +161,15 @@ def run() -> None:
     )
 
     log.info(
-        "producing to topic=%s bootstrap=%s interval_s=%d msg_delay_ms=%.2f",
+        "producing to topic=%s bootstrap=%s interval_s=%d msg_delay_ms=%.2f "
+        "sources=%s countries=%s shard=%s",
         TOPIC,
         BOOTSTRAP_SERVERS,
         INTERVAL_S,
         MSG_DELAY_MS,
+        ",".join(SOURCES),
+        ",".join(COUNTRIES) if COUNTRIES else "all",
+        f"{SHARD[0]}/{SHARD[1]}" if SHARD else "none",
     )
 
     sweep = 0
@@ -164,9 +202,16 @@ def run() -> None:
 
 
 def _chained_articles():
-    """Curated per-outlet feeds first, then the Google News amplifier."""
-    yield from iter_rss_articles()
-    yield from iter_gnews_articles()
+    """Curated per-outlet feeds first, then the Google News amplifier.
+
+    SOURCES env gates which arms run. Country filter applied inside
+    each iterator so a sharded producer only fetches its slice of
+    sources.yaml + gnews_queries.yaml.
+    """
+    if "rss" in SOURCES:
+        yield from iter_rss_articles(countries=COUNTRIES, shard=SHARD)
+    if "gnews" in SOURCES:
+        yield from iter_gnews_articles(countries=COUNTRIES, shard=SHARD)
 
 
 if __name__ == "__main__":
