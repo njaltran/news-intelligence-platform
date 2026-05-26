@@ -17,6 +17,8 @@ from typing import Any, Iterator
 
 import dlt
 import feedparser
+import requests
+import trafilatura
 import yaml
 from dlt.common.pendulum import pendulum
 
@@ -75,6 +77,43 @@ def _summary(entry: feedparser.FeedParserDict) -> str | None:
 def _fetch(outlet: dict[str, str]):
     """feedparser.parse with the bot UA. Runs in a worker thread."""
     return feedparser.parse(outlet["rss"], agent=USER_AGENT)
+
+
+def _extract_body(html: bytes) -> str | None:
+    """trafilatura main-text extraction. Input is raw response bytes so
+    trafilatura can sniff <meta charset> (avoids the requests
+    ISO-8859-1 default that mangled Cyrillic on NUR.KZ etc.). Cap at
+    BODY_MAX_CHARS so a giant page cannot inflate one Kafka message."""
+    if not html:
+        return None
+    text = trafilatura.extract(
+        html, include_comments=False, include_tables=False, favor_recall=False
+    )
+    if not text:
+        return None
+    return text[:BODY_MAX_CHARS]
+
+
+def _fetch_body(url: str) -> str | None:
+    """GET article URL and run _extract_body. Returns None on any
+    network/HTTP error so a single dead page does not block the sweep."""
+    try:
+        resp = requests.get(
+            url,
+            headers={"User-Agent": USER_AGENT},
+            timeout=BODY_TIMEOUT_S,
+            allow_redirects=True,
+        )
+        resp.raise_for_status()
+    except requests.RequestException as exc:
+        _log.debug("body: %s -> %s", url, exc)
+        return None
+    return _extract_body(resp.content)
+
+
+def _should_skip(url: str) -> bool:
+    """Placeholder for Task 5. Will filter URLs unsuitable for body fetch."""
+    return False
 
 
 def iter_rss_articles() -> Iterator[dict[str, Any]]:
