@@ -72,14 +72,10 @@ if interval_s > 0:
 else:
     st.sidebar.caption("auto-refresh paused")
 
-# Always re-pull on rerun. The cached values were too sticky for a
-# live-ingest view, so the cache is cleared each tick.
-st.cache_data.clear()
 if st.sidebar.button("Refresh now"):
     st.rerun()
 
 
-@st.cache_data(ttl=2)
 def fetch_totals() -> dict:
     df = _query(
         f"SELECT count() AS rows, uniqExact(url) AS unique_urls FROM {TABLE}"
@@ -87,7 +83,6 @@ def fetch_totals() -> dict:
     return df.iloc[0].to_dict()
 
 
-@st.cache_data(ttl=2)
 def fetch_by_country() -> pd.DataFrame:
     return _query(
         f"""
@@ -99,7 +94,6 @@ def fetch_by_country() -> pd.DataFrame:
     )
 
 
-@st.cache_data(ttl=2)
 def fetch_top_sources(limit: int = 30) -> pd.DataFrame:
     return _query(
         f"""
@@ -112,7 +106,6 @@ def fetch_top_sources(limit: int = 30) -> pd.DataFrame:
     )
 
 
-@st.cache_data(ttl=2)
 def fetch_recent(limit: int = 50) -> pd.DataFrame:
     return _query(
         f"""
@@ -124,7 +117,6 @@ def fetch_recent(limit: int = 50) -> pd.DataFrame:
     )
 
 
-@st.cache_data(ttl=2)
 def fetch_by_day() -> pd.DataFrame:
     return _query(
         f"""
@@ -137,7 +129,6 @@ def fetch_by_day() -> pd.DataFrame:
     )
 
 
-@st.cache_data(ttl=2)
 def fetch_arrivals(window_min: int) -> pd.DataFrame:
     """Per-second arrivals in the last `window_min` minutes. Drives
     the sparkline that gives the dashboard its streaming feel."""
@@ -152,7 +143,6 @@ def fetch_arrivals(window_min: int) -> pd.DataFrame:
     )
 
 
-@st.cache_data(ttl=2)
 def fetch_country_pulse() -> pd.DataFrame:
     """Per-country totals plus last-minute arrivals. Drives the map.
     `recent` is the heat signal: countries that are actively
@@ -170,17 +160,12 @@ def fetch_country_pulse() -> pd.DataFrame:
     )
 
 
-@st.cache_data(ttl=2)
 def fetch_distinct_sources() -> set[str]:
     df = _query(f"SELECT DISTINCT source FROM {TABLE}")
     return set(df["source"].dropna().tolist())
 
 
-try:
-    totals = fetch_totals()
-except Exception as exc:  # noqa: BLE001
-    st.error(f"ClickHouse query failed: {exc}")
-    st.stop()
+totals = fetch_totals()
 
 current_rows = int(totals["rows"])
 prev_rows = st.session_state.get("prev_rows")

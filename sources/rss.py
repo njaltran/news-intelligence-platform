@@ -124,10 +124,8 @@ def _extract_body(html: bytes) -> str | None:
 def _fetch_body(url: str) -> str | None:
     """GET article URL with a browser UA and run _extract_body on the
     raw bytes. Returns None on any network/HTTP error so a single dead
-    page does not block the sweep. Caller is expected to short-circuit
-    via _should_skip for known-non-extractable hosts."""
-    if _should_skip(url):
-        return None
+    page does not block the sweep. Callers short-circuit known-
+    non-extractable hosts via _should_skip before submitting."""
     try:
         resp = requests.get(
             url,

@@ -79,10 +79,7 @@ def _drain_batch(consumer: Consumer) -> list[dict]:
         if msg.error():
             log.error("kafka error: %s", msg.error())
             continue
-        try:
-            batch.append(json.loads(msg.value().decode("utf-8")))
-        except json.JSONDecodeError as exc:
-            log.warning("skip bad message: %s", exc)
+        batch.append(json.loads(msg.value().decode("utf-8")))
     return batch
 
 
@@ -130,18 +127,14 @@ def run() -> None:
                 received_any = True
                 last_msg_at = time.time()
                 load_started = time.monotonic()
-                try:
-                    pipeline.run(
-                        dlt.resource(
-                            iter(batch),
-                            name=TABLE,
-                            primary_key="url",
-                            write_disposition="merge",
-                        )
+                pipeline.run(
+                    dlt.resource(
+                        iter(batch),
+                        name=TABLE,
+                        primary_key="url",
+                        write_disposition="merge",
                     )
-                except Exception:  # noqa: BLE001
-                    log.exception("dlt load failed for batch of %d", len(batch))
-                    continue
+                )
                 for row in batch:
                     by_country[row.get("country_target") or "?"] += 1
                 total += len(batch)

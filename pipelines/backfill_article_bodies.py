@@ -53,17 +53,6 @@ def ch_query(sql: str) -> str:
     return resp.text
 
 
-def body_column_exists() -> bool:
-    """Probe system.columns. First-time backfill runs before the column
-    has ever been written; in that case we drop the body-null predicate."""
-    sql = (
-        "SELECT count() FROM system.columns "
-        f"WHERE database = 'news' AND table = '{TABLE}' AND name = 'body' "
-        "FORMAT TSV"
-    )
-    return ch_query(sql).strip() == "1"
-
-
 def _safe_country(country: str | None) -> str | None:
     """ISO alpha-2 only. Reject anything that could escape the SQL literal."""
     if country is None:
@@ -90,9 +79,6 @@ def select_missing_body(
 ) -> list[dict]:
     country = _safe_country(country)
     source = _safe_source_like(source)
-    where_body = (
-        "(body IS NULL OR body = '')" if body_column_exists() else "1 = 1"
-    )
     where_country = (
         f"AND country_target = '{country}'" if country else ""
     )
@@ -102,7 +88,7 @@ def select_missing_body(
     sql = f"""
     SELECT url, source, country_target, title, summary, published_at, extracted_at
     FROM {TABLE}
-    WHERE {where_body}
+    WHERE (body IS NULL OR body = '')
       AND url NOT LIKE 'https://news.google.com/%'
       AND url NOT LIKE 'https://www.reddit.com/%'
       AND url NOT LIKE 'https://reddit.com/%'
