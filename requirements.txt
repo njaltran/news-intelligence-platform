@@ -10,3 +10,4 @@ requests>=2.32.0
 streamlit>=1.36
 streamlit-autorefresh>=1.0
 pytest>=8
+trafilatura>=2.0
