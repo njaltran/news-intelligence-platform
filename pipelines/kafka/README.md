@@ -1,6 +1,6 @@
 # pipelines/kafka/
 
-Streaming ingestion path. Producers fetch news (NewsAPI, BBC, RSS + Google News, native-language scrapers), publish standardised messages to a single Kafka topic, a dlt consumer drains the topic into ClickHouse (or DuckDB for local debugging).
+Streaming ingestion path. Producers fetch news (NewsAPI, BBC, RSS + Google News, native-language scraping), publish standardised messages to a single Kafka topic, a dlt consumer drains the topic into ClickHouse (or DuckDB for local debugging).
 
 Owned by Nadi. Originally prototyped in [`nadikyaw/Enterprise_Architecture_BigData`](https://github.com/nadikyaw/Enterprise_Architecture_BigData), merged here on 2026-05-25.
 
@@ -19,26 +19,29 @@ Owned by Nadi. Originally prototyped in [`nadikyaw/Enterprise_Architecture_BigDa
 | `producer_newsapi.py` | NewsAPI: top-headlines for US/DE/IT, `everything` keyword search for MM/KZ. |
 | `producer_bbc.py` | BBC search results across all five countries (English-language outside view). |
 | `producer_local_scrapers.py` | Hybrid HTML + RSS scraping across 11 native outlets. |
-| `producer_rss.py` | Curated section feeds + Google News topic / search RSS. Reuses `sources/rss.py` + `sources/gnews.py`. ~40k messages per run. |
-| `consumer_to_duckdb.py` | Kafka consumer + dlt pipeline. Lands every message in `news_articles` table in DuckDB. |
-| `consumer_to_clickhouse.py` | Kafka consumer + dlt pipeline targeting the ClickHouse DWH (`news.news___articles`). Production path. |
+| `producer_rss.py` | Curated per-outlet RSS (`sources/rss.py`) + Google News topic/query feeds (`sources/gnews.py`). The Variety amplifier: same input set as the batch RSS arm, streamed instead. ~40k messages per run. |
+| `consumer_to_duckdb.py` | Kafka consumer + dlt pipeline. Lands every message in `news_articles` table in DuckDB. Use for local debugging. |
+| `consumer_to_clickhouse.py` | Same shape, ClickHouse destination. Append-only into `news.articles` (ReplacingMergeTree). This is the production-shaped path. |
 
 All producers publish to topic `unified_news_topic` with the unified message schema (`source`, `country_target`, `title`, `url`, `summary`, `published_at`, `extracted_at`). dlt infers the table schema from these messages.
 
 ## Setup
 
-1. **NewsAPI key.** Add to `.dlt/secrets.toml`:
+1. **Secrets.** Copy the template and fill in:
 
-   ```toml
-   [sources.newsapi]
-   api_key = "your-key-here"
+   ```bash
+   cp .dlt/secrets.toml.example .dlt/secrets.toml
    ```
 
-2. **Bring up the broker** (Docker required):
+   Contains NewsAPI key (for `producer_newsapi.py`) and the ClickHouse password (matches `infra/docker-compose.yml`).
+
+2. **Bring up the broker + ClickHouse** (Docker required):
 
    ```bash
    docker compose -f infra/docker-compose.yml up -d
    ```
+
+   This starts Zookeeper, Kafka (`localhost:9092`), and ClickHouse (native TCP on `localhost:9000`, HTTP on `localhost:8123`).
 
 3. **Install Python deps** (already in `requirements.txt`):
 
@@ -48,20 +51,18 @@ All producers publish to topic `unified_news_topic` with the unified message sch
 
 ## Run
 
-Open two terminals. Consumer first so producers' early messages land:
+Open two terminals. Consumer first so producers' early messages land. All commands run from the repo root; `PYTHONPATH=.` lets the producers import from `sources/`.
 
 ```bash
-# Terminal 1: consumer (stops after 15s of silence). Pick the
-# destination you want; both consume the same topic.
-PYTHONPATH=. uv run python pipelines/kafka/consumer_to_clickhouse.py
-# or, for local debugging only:
-PYTHONPATH=. uv run python pipelines/kafka/consumer_to_duckdb.py
+# Terminal 1: consumer (stops after ~15s of silence). Pick one destination.
+PYTHONPATH=. uv run python pipelines/kafka/consumer_to_clickhouse.py   # production-shaped
+# PYTHONPATH=. uv run python pipelines/kafka/consumer_to_duckdb.py     # local debugging
 
 # Terminal 2: any/all producers
 PYTHONPATH=. uv run python pipelines/kafka/producer_rss.py
-uv run python pipelines/kafka/producer_newsapi.py
-uv run python pipelines/kafka/producer_bbc.py
-uv run python pipelines/kafka/producer_local_scrapers.py
+PYTHONPATH=. uv run python pipelines/kafka/producer_newsapi.py
+PYTHONPATH=. uv run python pipelines/kafka/producer_bbc.py
+PYTHONPATH=. uv run python pipelines/kafka/producer_local_scrapers.py
 ```
 
 For the typical local dev loop (broker + ClickHouse + Streamlit dashboard + consumer + RSS producer in one terminal, merged log tail) use the helper script instead:

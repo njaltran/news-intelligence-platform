@@ -134,7 +134,7 @@ dlt resolves `.dlt/secrets.toml` and configs from cwd, so all commands run from 
 │   │   ├── producer_newsapi.py
 │   │   ├── producer_bbc.py
 │   │   ├── producer_local_scrapers.py
-│   │   ├── producer_rss.py
+│   │   ├── producer_rss.py        # curated RSS + Google News into Kafka
 │   │   ├── consumer_to_duckdb.py
 │   │   └── consumer_to_clickhouse.py
 │   ├── process.py

@@ -27,8 +27,7 @@ import dlt
 from sources.gnews import iter_gnews_articles
 from sources.rss import iter_rss_articles
 
-# Some publisher feeds hang. Bound the wait globally.
-socket.setdefaulttimeout(20)
+FEED_SOCKET_TIMEOUT_S = 20
 
 
 @dlt.resource(name="articles", primary_key="url", write_disposition="merge")
@@ -52,7 +51,15 @@ def run() -> None:
         destination="duckdb",
         dataset_name="rss_raw",
     )
-    load_info = pipeline.run(rss_source())
+    # Some publisher feeds hang. Bound the socket wait only for the
+    # duration of this run so we don't change the default for dlt
+    # internals or anything that imports this module.
+    prev_timeout = socket.getdefaulttimeout()
+    socket.setdefaulttimeout(FEED_SOCKET_TIMEOUT_S)
+    try:
+        load_info = pipeline.run(rss_source())
+    finally:
+        socket.setdefaulttimeout(prev_timeout)
     print(load_info)  # noqa: T201
 
 
