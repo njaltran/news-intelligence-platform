@@ -31,7 +31,6 @@ flowchart LR
     DS1 -- "raw rows" --> P2
     P2  -- "cleaned, deduped rows" --> P3
     P3  -- "vectors + topic IDs" --> DS2
-    P3  -- "enriched rows" --> P4
     DS2 -- "neighbour vectors" --> P4
     P4  -- "country_topic_daily, divergence" --> DS3
     DS3 -- "aggregates" --> P5
@@ -107,18 +106,14 @@ flowchart LR
     subgraph ENV ["Cloud / Local environment"]
         direction LR
 
-        subgraph DEV ["Dev laptop (macOS)"]
-            direction TB
-            ART_PRODS["«artifact»<br/>producer_*.py<br/>(RSS, BBC, NewsAPI, scrapers)"]
-            ART_CONS["«artifact»<br/>consumer_to_clickhouse.py<br/>(dlt Kafka consumer)"]
-            ART_PROC["«artifact»<br/>processing.py<br/>(embeddings + topic)"]
-        end
-
         subgraph DOCKER ["Docker host (local or HWR VPS)"]
             direction TB
-            ART_KAFKA["«artifact»<br/>kafka broker<br/>(:container, port 9092)"]
-            ART_CH["«artifact»<br/>clickhouse-server<br/>(raw + modelled)"]
-            ART_STREAMLIT["«artifact»<br/>streamlit_app.py<br/>(uv process, port 8501)"]
+            ART_PRODS["«container»<br/>producer_*.py<br/>(RSS, BBC, NewsAPI, scrapers)"]
+            ART_CONS["«container»<br/>consumer_to_clickhouse.py<br/>(dlt Kafka consumer)"]
+            ART_PROC["«container»<br/>processing.py<br/>(embeddings + topic)"]
+            ART_KAFKA["«container»<br/>kafka broker<br/>(port 9092)"]
+            ART_CH["«container»<br/>clickhouse-server<br/>(raw + modelled)"]
+            ART_STREAMLIT["«container»<br/>streamlit_app.py<br/>(port 8501)"]
         end
 
         subgraph EXTAPI ["External APIs"]
@@ -145,6 +140,6 @@ flowchart LR
 
     classDef node fill:#dfe9ff,stroke:#1f4cbf,color:#0c1d3a;
     classDef art fill:#f0f4ff,stroke:#1f4cbf,color:#0c1d3a;
-    class DEV,DOCKER,EXTAPI,CLIENT,ENV node;
+    class DOCKER,EXTAPI,CLIENT,ENV node;
     class ART_PRODS,ART_CONS,ART_PROC,ART_KAFKA,ART_CH,ART_STREAMLIT,ART_NEWS,ART_GDELT,ART_RSS,ART_BROWSER art;
 ```
