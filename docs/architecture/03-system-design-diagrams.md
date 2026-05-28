@@ -10,22 +10,24 @@ flowchart LR
     ANL[/"Analyst<br/>(dashboard user)"/]
 
     %% Processes (rounded)
-    P1(["P1<br/>Ingest &amp; Validate<br/>(dlt + BS4)"])
-    P1B(["P1.5<br/>Aggregate sources<br/>(unify schema)"])
+    P1(["P1<br/>Producers<br/>(dlt REST + BS4,<br/>publish unified msgs)"])
+    P1B(["P1.5<br/>dlt Kafka consumer<br/>(drain + aggregate sources)"])
     P2(["P2<br/>Clean &amp; Dedup"])
     P3(["P3<br/>Embed &amp; Topic-Model"])
     P4(["P4<br/>Aggregate<br/>country x topic x time"])
     P5(["P5<br/>Serve Query API"])
 
     %% Data stores
+    DS0[("DS0<br/>Kafka topic<br/>unified_news_topic")]
     DS1[("DS1<br/>ClickHouse<br/>raw lake")]
-    DS2[("DS2<br/>Vector store<br/>embeddings")]
+    DS2[("DS2<br/>Vector store<br/>(Qdrant)")]
     DS3[("DS3<br/>ClickHouse<br/>modelled DWH")]
 
     SRC -- "raw articles (JSON)" --> P1
-    RSS -- "HTML + RSS items" --> P1
-    P1  -- "validated rows" --> P1B
-    P1B -- "unified rows" --> DS1
+    RSS -- "HTML + RSS items (high velocity)" --> P1
+    P1  -- "unified messages" --> DS0
+    DS0 -- "stream consumed in batches" --> P1B
+    P1B -- "raw rows" --> DS1
     DS1 -- "raw rows" --> P2
     P2  -- "cleaned, deduped rows" --> P3
     P3  -- "vectors + topic IDs" --> DS2
@@ -40,7 +42,7 @@ flowchart LR
     classDef store fill:#dfe9ff,stroke:#1f4cbf,color:#0c1d3a;
     class SRC,RSS,ANL ext;
     class P1,P1B,P2,P3,P4,P5 proc;
-    class DS1,DS2,DS3 store;
+    class DS0,DS1,DS2,DS3 store;
 ```
 
 ## 2. Component Diagram (UML)
@@ -51,8 +53,9 @@ flowchart TB
         direction TB
         DLTSRC["«component»<br/>dlt REST source<br/>(NewsAPI, GDELT)"]
         BS4["«component»<br/>BeautifulSoup<br/>scraper / RSS"]
-        DLTPIPE["«component»<br/>dlt Pipeline<br/>(merge + schema)"]
-        SRCAGG["«component»<br/>Source aggregator<br/>(unify schema)"]
+        KPROD["«component»<br/>Kafka producers<br/>(RSS, BBC, NewsAPI, scrapers)"]
+        KBROKER[("«broker»<br/>Kafka<br/>unified_news_topic")]
+        KCONS["«component»<br/>dlt Kafka consumer<br/>(aggregate sources, chunked)"]
     end
 
     subgraph PROC ["Processing (subsystem)"]
@@ -66,20 +69,21 @@ flowchart TB
     subgraph STORE ["Storage"]
         direction TB
         CH_RAW["«component»<br/>ClickHouse<br/>(raw lake)"]
-        VEC["«component»<br/>Vector store<br/>(DuckDB / Qdrant)"]
+        VEC["«component»<br/>Vector store<br/>(Qdrant)"]
         CH["«component»<br/>ClickHouse<br/>(modelled DWH)"]
     end
 
     subgraph SERVE ["Serving"]
         direction TB
-        MARIMO["«component»<br/>marimo dashboard<br/>(narrative divergence)"]
+        STREAMLIT["«component»<br/>Streamlit dashboard<br/>(live feed + narrative divergence)"]
         QAPI["«component»<br/>Query layer<br/>(ClickHouse driver)"]
     end
 
-    DLTSRC -. "uses" .-> DLTPIPE
-    BS4    -. "uses" .-> DLTPIPE
-    DLTPIPE -. "writes" .-> SRCAGG
-    SRCAGG  -. "writes" .-> CH_RAW
+    DLTSRC -. "uses" .-> KPROD
+    BS4    -. "uses" .-> KPROD
+    KPROD  -. "publishes" .-> KBROKER
+    KBROKER -. "drained by" .-> KCONS
+    KCONS  -. "writes" .-> CH_RAW
 
     CLEAN -. "reads / writes" .-> CH_RAW
     EMB   -. "reads cleaned rows" .-> CLEAN
@@ -89,8 +93,8 @@ flowchart TB
     AGG   -. "reads vectors" .-> VEC
     AGG   -. "writes aggregates" .-> CH
 
-    MARIMO -. "uses" .-> QAPI
-    QAPI   -. "reads" .-> CH
+    STREAMLIT -. "uses" .-> QAPI
+    QAPI      -. "reads" .-> CH
 
     classDef sub fill:#f7f2ff,stroke:#7b4fbf,stroke-dasharray: 5 4;
     class ING,PROC,STORE,SERVE sub;
@@ -105,15 +109,16 @@ flowchart LR
 
         subgraph DEV ["Dev laptop (macOS)"]
             direction TB
-            ART_PIPE["«artifact»<br/>rest_api_pipeline.py<br/>(uv venv)"]
-            ART_AGG["«artifact»<br/>aggregate_sources.py<br/>(unify schema)"]
+            ART_PRODS["«artifact»<br/>producer_*.py<br/>(RSS, BBC, NewsAPI, scrapers)"]
+            ART_CONS["«artifact»<br/>consumer_to_clickhouse.py<br/>(dlt Kafka consumer)"]
             ART_PROC["«artifact»<br/>processing.py<br/>(embeddings + topic)"]
         end
 
         subgraph DOCKER ["Docker host (local or HWR VPS)"]
             direction TB
+            ART_KAFKA["«artifact»<br/>kafka broker<br/>(:container, port 9092)"]
             ART_CH["«artifact»<br/>clickhouse-server<br/>(raw + modelled)"]
-            ART_MARIMO["«artifact»<br/>marimo edit<br/>(uv process)"]
+            ART_STREAMLIT["«artifact»<br/>streamlit_app.py<br/>(uv process, port 8501)"]
         end
 
         subgraph EXTAPI ["External APIs"]
@@ -128,17 +133,18 @@ flowchart LR
         end
     end
 
-    ART_PIPE -- "HTTPS:443" --> ART_NEWS
-    ART_PIPE -- "HTTPS:443" --> ART_GDELT
-    ART_PIPE -- "HTTPS:443" --> ART_RSS
-    ART_PIPE -- "in-process" --> ART_AGG
-    ART_AGG  -- "HTTP:8123 (native:9000)" --> ART_CH
-    ART_PROC -- "HTTP:8123 (native:9000)" --> ART_CH
-    ART_MARIMO -- "HTTP:8123" --> ART_CH
-    ART_BROWSER -- "HTTPS:2718" --> ART_MARIMO
+    ART_PRODS -- "HTTPS:443" --> ART_NEWS
+    ART_PRODS -- "HTTPS:443" --> ART_GDELT
+    ART_PRODS -- "HTTPS:443" --> ART_RSS
+    ART_PRODS -- "kafka:9092 (produce)" --> ART_KAFKA
+    ART_KAFKA -- "kafka:9092 (consume)" --> ART_CONS
+    ART_CONS  -- "HTTP:8123 (native:9000)" --> ART_CH
+    ART_PROC  -- "HTTP:8123 (native:9000)" --> ART_CH
+    ART_STREAMLIT -- "HTTP:8123" --> ART_CH
+    ART_BROWSER -- "HTTP:8501" --> ART_STREAMLIT
 
     classDef node fill:#dfe9ff,stroke:#1f4cbf,color:#0c1d3a;
     classDef art fill:#f0f4ff,stroke:#1f4cbf,color:#0c1d3a;
     class DEV,DOCKER,EXTAPI,CLIENT,ENV node;
-    class ART_PIPE,ART_AGG,ART_PROC,ART_CH,ART_MARIMO,ART_NEWS,ART_GDELT,ART_RSS,ART_BROWSER art;
+    class ART_PRODS,ART_CONS,ART_PROC,ART_KAFKA,ART_CH,ART_STREAMLIT,ART_NEWS,ART_GDELT,ART_RSS,ART_BROWSER art;
 ```
