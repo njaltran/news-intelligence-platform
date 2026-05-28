@@ -50,6 +50,13 @@ PRODUCER_SHARDS=${PRODUCER_SHARDS:-4}
 # so the consumer drains whatever the producer left on the topic.
 DRAIN_GRACE_S=${DRAIN_GRACE_S:-25}
 
+# Seconds to let producers exit cleanly after SIGTERM before SIGKILL.
+# Producer's finally block calls body_pool.shutdown(wait=True), which
+# waits on up to RSS_BODY_WORKERS in-flight HTTP fetches (each up to
+# RSS_BODY_TIMEOUT_S). Without a bound here, a single stuck socket can
+# block the whole stop sequence.
+PRODUCER_GRACE_S=${PRODUCER_GRACE_S:-20}
+
 # Truncate log files on each fresh run so the live tail starts clean.
 : > "$CONSUMER_LOG"
 : > "$STREAMLIT_LOG"
@@ -74,11 +81,30 @@ cleanup() {
   echo "[dev-stack] ordered shutdown..."
 
   if [[ ${#producer_pids[@]} -gt 0 ]]; then
-    echo "[dev-stack]   1/3 stopping ${#producer_pids[@]} producer(s): ${producer_pids[*]}"
+    echo "[dev-stack]   1/3 stopping ${#producer_pids[@]} producer(s) (grace ${PRODUCER_GRACE_S}s): ${producer_pids[*]}"
     for pid in "${producer_pids[@]}"; do
       kill -TERM "$pid" 2>/dev/null || true
     done
+    # Poll all producers in parallel. Exit as soon as none are alive
+    # or the grace window expires.
+    elapsed=0
+    while [[ $elapsed -lt $PRODUCER_GRACE_S ]]; do
+      any_alive=0
+      for pid in "${producer_pids[@]}"; do
+        if kill -0 "$pid" 2>/dev/null; then
+          any_alive=1
+          break
+        fi
+      done
+      [[ "$any_alive" -eq 0 ]] && break
+      sleep 1
+      elapsed=$((elapsed + 1))
+    done
     for pid in "${producer_pids[@]}"; do
+      if kill -0 "$pid" 2>/dev/null; then
+        echo "[dev-stack]   producer $pid still running after ${PRODUCER_GRACE_S}s, forcing"
+        kill -KILL "$pid" 2>/dev/null || true
+      fi
       wait "$pid" 2>/dev/null || true
     done
   fi
@@ -96,15 +122,30 @@ cleanup() {
       kill -KILL "$consumer_pid" 2>/dev/null || true
     fi
     wait "$consumer_pid" 2>/dev/null || true
+  else
+    echo "[dev-stack]   2/3 consumer already exited (likely caught Ctrl+C directly), skipping drain"
   fi
 
   echo "[dev-stack]   3/3 stopping streamlit + tails"
   if [[ -n "$streamlit_pid" ]]; then
     kill -TERM "$streamlit_pid" 2>/dev/null || true
   fi
-  for pid in "${tail_pids[@]}"; do
-    kill "$pid" 2>/dev/null || true
+  # tail_pids tracks the awk pid at the end of each `tail -F | awk &`
+  # pipeline. The tail processes on the left of the pipe are NOT in
+  # that list and would block the final `wait` indefinitely. pkill -P
+  # sweeps every remaining direct child of this script (tails, the
+  # awks already targeted above, and any stragglers).
+  pkill -P $$ 2>/dev/null || true
+  # Bounded final wait so a hung child never wedges the script.
+  final_wait=0
+  while [[ $final_wait -lt 5 ]] && [[ -n "$(jobs -pr 2>/dev/null)" ]]; do
+    sleep 1
+    final_wait=$((final_wait + 1))
   done
+  if [[ -n "$(jobs -pr 2>/dev/null)" ]]; then
+    echo "[dev-stack]   children still alive after 5s, forcing"
+    pkill -KILL -P $$ 2>/dev/null || true
+  fi
   wait 2>/dev/null || true
 
   echo "[dev-stack] done. data preserved in docker volumes:"
